@@ -1,20 +1,24 @@
+//use std::sync::Weak;
+
+#[derive(PartialEq, Eq, Debug)]
 enum PlayerColor {
     White,
     Black
 }
 
+#[allow(dead_code)] // Dead code is allowed, because I want x, y, z even if I don't use it.
 struct Point {
     x : i8,
     y : i8,
     z : i8,
     flat_coordinate : i8,
-    // lines : Vec<&'a Line>
+    lines : Vec<i8> // This vector stores the IDs of all lines through it.
 }
 
 impl Point {
     // constructor, by convention
     pub fn new(x:i8, y:i8, z:i8) -> Point {
-        Point {x:x, y:y, z:z, flat_coordinate:flatten(x, y, z)} //, lines : Vec::new()}
+        Point {x:x, y:y, z:z, flat_coordinate:flatten(x, y, z), lines:Vec::new()} //, lines : Vec::new()}
     }
 }
 
@@ -37,33 +41,39 @@ impl Line {
 //     Piece(PlayerColor),
 //     Empty
 // }
-//
-// enum LineState {
-//     Empty,
-//     Pure { color: PlayerColor, count: i8 },
-//     Mixed
-// }
+
+#[derive(PartialEq, Eq, Debug)]
+enum LineState {
+    Empty,
+    Pure { color: PlayerColor, count: i8 },
+    Mixed,
+    Win(PlayerColor),
+}
 //
 // struct GameState {
 //     points : [PointState; 64],
 //     lines  : [LineState; 76]  // something something mutable?
 // }
 
-// struct Point {
-//     x, y, z : i8,
-//     lines : Vec<Line>
-// }
-//
-// struct Line {
-//     points : [Point; 4]
-// }
-
 fn flatten(x:i8, y:i8, z:i8) -> i8 {
     return x + 4*y + 16*z
 }
 
-fn expand(index:i8) -> (i8, i8, i8) {
-    return (index % 4, (index / 4) % 4, index / 16)
+// fn expand(index:i8) -> (i8, i8, i8) {
+//     return (index % 4, (index / 4) % 4, index / 16)
+// }
+
+fn add_ball(line_state : LineState, new_color : PlayerColor) -> LineState {
+    match line_state {
+        LineState::Empty => LineState::Pure { color : new_color, count : 1},
+        LineState::Pure { color : current_color, count : old_count} =>
+            if current_color != new_color { LineState::Mixed } else {
+                if old_count == 3 {LineState::Win(current_color)}
+                else {LineState::Pure {color : current_color, count : old_count+1}}
+            },
+        LineState::Mixed => LineState::Mixed,
+        LineState::Win(_) => panic!("A filled line can't accept any more balls.")
+    }
 }
 
 fn main() {
@@ -111,13 +121,27 @@ fn main() {
     assert_eq!(line_box.len(), 76);
 
 
-    // let mut line_map = Vec::new();
-    // for point in &point_box {
-    //     line_map.push(Vec::new());
-    // }
-    // for line in &line_box {
-    //     for point in line.points.iter() {
-    //         line_map.get(point.flat_coordinate).push(line);
-    //     }
+    // Refenence the line ID in the points.
+    let mut i = 0;
+    for line in line_box {
+        for point in line.points.iter() {
+            point_box[point.flat_coordinate as usize].lines.push(i);
+        }
+        i += 1;
+    }
+
+    // Do some testing with the LineState Code
+    let mut test_state = LineState::Empty;
+    test_state = add_ball(test_state, PlayerColor::White);
+    println!("{:?}", test_state);
+    test_state = add_ball(test_state, PlayerColor::White);
+    println!("{:?}", test_state);
+    test_state = add_ball(test_state, PlayerColor::White);
+    println!("{:?}", test_state);
+    test_state = add_ball(test_state, PlayerColor::Black);
+    println!("{:?}", test_state);
+
+    // for point in point_box {
+    //     println!("{}", point.lines.len());
     // }
 }
