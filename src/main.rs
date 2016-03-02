@@ -9,6 +9,13 @@ enum PlayerColor {
     Black
 }
 
+fn flip_color(c : PlayerColor) -> PlayerColor {
+    match c {
+        PlayerColor::White => PlayerColor::Black,
+        PlayerColor::Black => PlayerColor::White
+    }
+}
+
 #[allow(dead_code)] // Dead code is allowed, because I want x, y, z even if I don't use it.
 #[derive(Debug)]
 struct Point {
@@ -57,12 +64,80 @@ enum LineState {
 
 struct GameState {
     points : [PointState; 64],
-    lines  : [LineState; 76]  // something something mutable?
+    lines  : [LineState; 76],  // something something mutable?
+    current_color : PlayerColor
 }
 
 impl GameState {
     pub fn new() -> GameState {
-        GameState { points : [PointState::Empty; 64], lines : [LineState::Empty; 76]}
+        GameState {
+            points : [PointState::Empty; 64],
+            lines : [LineState::Empty; 76],
+            current_color : PlayerColor::White
+        }
+    }
+}
+
+struct GameStructure {
+    points : Vec<Point>,
+    lines  : Vec<Line>
+}
+
+impl GameStructure {
+    pub fn new() -> GameStructure {
+        // Initialize a vector of all Points.
+        let mut point_box = Vec::new();
+        for z in 0..4 {
+            for y in 0..4 {
+                for x in 0..4 {
+                    point_box.push(Point::new(x, y, z));
+                }
+            }
+        }
+        // Check if this really produced the right amount of points.
+        // Assert the property, that point_box[i].flat_coordinate = i.
+        assert_eq!(point_box.len(), 64);
+        let mut i = 0;
+        for p in &point_box {
+            assert_eq!(p.flat_coordinate, i);
+            i += 1;
+        }
+
+        // Initialize a vector of all Lines.
+        let mut line_box = Vec::new();
+        for a in 0..4 {
+            for b in 0..4 {
+                line_box.push(Line::new(a, b, 0, 0, 0, 1));
+                line_box.push(Line::new(0, a, b, 1, 0, 0));
+                line_box.push(Line::new(b, 0, a, 0, 1, 0))
+            }
+            // Diagonals in two spacial directions
+            line_box.push(Line::new(a, 0, 0, 0, 1, 1));
+            line_box.push(Line::new(0, a, 0, 1, 0, 1));
+            line_box.push(Line::new(0, 0, a, 1, 1, 0));
+            line_box.push(Line::new(a, 3, 0, 0,-1, 1));
+            line_box.push(Line::new(0, a, 3, 1, 0,-1));
+            line_box.push(Line::new(3, 0, a,-1, 1, 0));
+        }
+        // Diagonals in all three directions at once
+        line_box.push(Line::new(0, 0, 0, 1, 1, 1));
+        line_box.push(Line::new(3, 0, 0,-1, 1, 1));
+        line_box.push(Line::new(3, 3, 0,-1,-1, 1));
+        line_box.push(Line::new(0, 3, 0, 1,-1, 1));
+
+        // Verify if the line_box has the right length.
+        assert_eq!(line_box.len(), 76);
+
+
+        // Refenence the line ID in the points.
+        let mut i = 0;
+        for line in &line_box {
+            for point in line.points.iter() {
+                point_box[point.flat_coordinate as usize].lines.push(i);
+            }
+            i += 1;
+        }
+        GameStructure { points : point_box, lines : line_box }
     }
 }
 
@@ -110,107 +185,36 @@ fn legal_moves(game_state : &GameState) -> Vec<(i8, i8)> {
     return result;
 }
 
+fn play_at(structure : &GameStructure, state : &mut GameState, x:i8, y:i8) {
+    let z = z_value(&state, x, y);
+    let flat_coordinate = match z {
+        Some(z) => flatten(x, y, z),
+        None => panic!("Added a ball on a forbidden row")
+    };
+    state.points[flat_coordinate as usize] = PointState::Piece(state.current_color);
+    for line in structure.points[flat_coordinate as usize].lines.clone() {
+        state.lines[line as usize] = add_ball(state.lines[line as usize], state.current_color);
+    }
+    state.current_color = flip_color(state.current_color);
+}
+
+fn play_at_random(structure : &GameStructure, state : &mut GameState) {
+    let moves = legal_moves(&state);
+    let position = thread_rng().choose(&moves);
+    match position {
+        Some(&(x, y)) => play_at(structure, state, x, y),
+        None => panic!("can't play on that board")
+    }
+}
+
 fn main() {
-    // Initialize a vector of all Points.
-    // This has the property, that point_box[i].flat_coordinate = i.
-    let mut point_box = Vec::new();
-    for z in 0..4 {
-        for y in 0..4 {
-            for x in 0..4 {
-                point_box.push(Point::new(x, y, z));
-            }
-        }
-    }
-    // Check if this really produced the right amount of points.
-    assert_eq!(point_box.len(), 64);
-    let mut i = 0;
-    for p in &point_box {
-        assert_eq!(p.flat_coordinate, i);
-        i += 1;
-    }
-
-    // Initialize a vector of all Lines.
-    let mut line_box = Vec::new();
-    for a in 0..4 {
-        for b in 0..4 {
-            line_box.push(Line::new(a, b, 0, 0, 0, 1));
-            line_box.push(Line::new(0, a, b, 1, 0, 0));
-            line_box.push(Line::new(b, 0, a, 0, 1, 0))
-        }
-        // Diagonals in two spacial directions
-        line_box.push(Line::new(a, 0, 0, 0, 1, 1));
-        line_box.push(Line::new(0, a, 0, 1, 0, 1));
-        line_box.push(Line::new(0, 0, a, 1, 1, 0));
-        line_box.push(Line::new(a, 3, 0, 0,-1, 1));
-        line_box.push(Line::new(0, a, 3, 1, 0,-1));
-        line_box.push(Line::new(3, 0, a,-1, 1, 0));
-    }
-    // Diagonals in all three directions at once
-    line_box.push(Line::new(0, 0, 0, 1, 1, 1));
-    line_box.push(Line::new(3, 0, 0,-1, 1, 1));
-    line_box.push(Line::new(3, 3, 0,-1,-1, 1));
-    line_box.push(Line::new(0, 3, 0, 1,-1, 1));
-
-    // Verify if the line_box has the right length.
-    assert_eq!(line_box.len(), 76);
-
-
-    // Refenence the line ID in the points.
-    let mut i = 0;
-    for line in line_box {
-        for point in line.points.iter() {
-            point_box[point.flat_coordinate as usize].lines.push(i);
-        }
-        i += 1;
-    }
-
-    // Do some testing with the LineState Code
-    let mut test_state = LineState::Empty;
-    test_state = add_ball(test_state, PlayerColor::White);
-    println!("{:?}", test_state);
-    test_state = add_ball(test_state, PlayerColor::White);
-    println!("{:?}", test_state);
-    test_state = add_ball(test_state, PlayerColor::White);
-    println!("{:?}", test_state);
-    test_state = add_ball(test_state, PlayerColor::Black);
-    println!("{:?}", test_state);
-
-    // for point in point_box {
-    //     println!("{}", point.lines.len());
-    // }
-
-    println!("{:?}", z_value(&GameState::new(), 0, 2));
-
-    fn play_at(state : &mut GameState, x:i8, y:i8, color : PlayerColor) {//-> GameState {
-        let z = z_value(&state, x, y);
-        let flat_coordinate = match z {
-            Some(z) => flatten(x, y, z),
-            None => panic!("Added a ball on a forbidden row")
-        };
-        state.points[flat_coordinate as usize] = PointState::Piece(color);
-        //return state; // Here I only return it to hand back ownership to the calling code.
-    }
+    let game_structure = GameStructure::new();
 
     let mut mystate = GameState::new();
     println!("{:?}", z_value(&mystate, 0, 2));
-    {
-        let moves = legal_moves(&mystate);
-        let position = thread_rng().choose(&moves);
-        match position {
-            Some(&(x, y)) => play_at(&mut mystate, x, y, PlayerColor::White),
-            None => panic!("can't play on that board")
-        }
+    for _ in 0..40 {
+        play_at_random(&game_structure, &mut mystate);
     }
     println!("{:?}", z_value(&mystate, 0, 2));
-
-
-    let choices = [1, 2, 4, 8, 16, 32];
-    let mut rng = thread_rng();
-    println!("{:?}", rng.choose(&point_box));
-    println!("{:?}", rng.choose(&point_box));
-    println!("{:?}", rng.choose(&point_box));
-    println!("{:?}", rng.choose(&point_box));
-    println!("{:?}", rng.choose(&point_box));
-    println!("{:?}", rng.choose(&point_box));
-    assert_eq!(rng.choose(&choices[..0]), None);
+    println!("{:?}", mystate.lines[4]);
 }
