@@ -1,12 +1,16 @@
 //use std::sync::Weak;
+extern crate rand;
+use rand::{thread_rng, Rng};
 
-#[derive(PartialEq, Eq, Debug)]
+
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 enum PlayerColor {
     White,
     Black
 }
 
 #[allow(dead_code)] // Dead code is allowed, because I want x, y, z even if I don't use it.
+#[derive(Debug)]
 struct Point {
     x : i8,
     y : i8,
@@ -36,24 +40,31 @@ impl Line {
         Line { points : [point1, point2, point3, point4]}
     }
 }
-//
-// enum PointState {
-//     Piece(PlayerColor),
-//     Empty
-// }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+enum PointState {
+    Piece(PlayerColor),
+    Empty
+}
+
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 enum LineState {
     Empty,
     Pure { color: PlayerColor, count: i8 },
     Mixed,
     Win(PlayerColor),
 }
-//
-// struct GameState {
-//     points : [PointState; 64],
-//     lines  : [LineState; 76]  // something something mutable?
-// }
+
+struct GameState {
+    points : [PointState; 64],
+    lines  : [LineState; 76]  // something something mutable?
+}
+
+impl GameState {
+    pub fn new() -> GameState {
+        GameState { points : [PointState::Empty; 64], lines : [LineState::Empty; 76]}
+    }
+}
 
 fn flatten(x:i8, y:i8, z:i8) -> i8 {
     return x + 4*y + 16*z
@@ -74,6 +85,29 @@ fn add_ball(line_state : LineState, new_color : PlayerColor) -> LineState {
         LineState::Mixed => LineState::Mixed,
         LineState::Win(_) => panic!("A filled line can't accept any more balls.")
     }
+}
+
+fn z_value(game_state : &GameState, x : i8, y : i8) -> Option<i8> {
+    for z in 0..4 {
+        if game_state.points[flatten(x, y, z) as usize] == PointState::Empty {
+            return Some(z)
+        }
+    }
+    return None
+}
+
+fn legal_moves(game_state : &GameState) -> Vec<(i8, i8)> {
+    let mut result = Vec::new();
+    for x in 0..4 {
+        for y in 0..4 {
+            let height = z_value(game_state, x, y);
+            match height {
+                Some(_) => result.push((x, y)),
+                None => ()
+            }
+        }
+    }
+    return result;
 }
 
 fn main() {
@@ -144,4 +178,39 @@ fn main() {
     // for point in point_box {
     //     println!("{}", point.lines.len());
     // }
+
+    println!("{:?}", z_value(&GameState::new(), 0, 2));
+
+    fn play_at(state : &mut GameState, x:i8, y:i8, color : PlayerColor) {//-> GameState {
+        let z = z_value(&state, x, y);
+        let flat_coordinate = match z {
+            Some(z) => flatten(x, y, z),
+            None => panic!("Added a ball on a forbidden row")
+        };
+        state.points[flat_coordinate as usize] = PointState::Piece(color);
+        //return state; // Here I only return it to hand back ownership to the calling code.
+    }
+
+    let mut mystate = GameState::new();
+    println!("{:?}", z_value(&mystate, 0, 2));
+    {
+        let moves = legal_moves(&mystate);
+        let position = thread_rng().choose(&moves);
+        match position {
+            Some(&(x, y)) => play_at(&mut mystate, x, y, PlayerColor::White),
+            None => panic!("can't play on that board")
+        }
+    }
+    println!("{:?}", z_value(&mystate, 0, 2));
+
+
+    let choices = [1, 2, 4, 8, 16, 32];
+    let mut rng = thread_rng();
+    println!("{:?}", rng.choose(&point_box));
+    println!("{:?}", rng.choose(&point_box));
+    println!("{:?}", rng.choose(&point_box));
+    println!("{:?}", rng.choose(&point_box));
+    println!("{:?}", rng.choose(&point_box));
+    println!("{:?}", rng.choose(&point_box));
+    assert_eq!(rng.choose(&choices[..0]), None);
 }
