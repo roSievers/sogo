@@ -33,6 +33,10 @@ impl Point {
     }
 }
 
+fn flatten(x:i8, y:i8, z:i8) -> i8 {
+    return x + 4*y + 16*z
+}
+
 struct Line {
     points : [Point; 4]
 }
@@ -62,10 +66,18 @@ enum LineState {
     Win(PlayerColor),
 }
 
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+enum VictoryState {
+    Undecided,
+    Win(PlayerColor),
+    Draw
+}
+
 struct GameState {
     points : [PointState; 64],
     lines  : [LineState; 76],  // something something mutable?
-    current_color : PlayerColor
+    current_color : PlayerColor,
+    victory_state : VictoryState
 }
 
 impl GameState {
@@ -73,7 +85,8 @@ impl GameState {
         GameState {
             points : [PointState::Empty; 64],
             lines : [LineState::Empty; 76],
-            current_color : PlayerColor::White
+            current_color : PlayerColor::White,
+            victory_state : VictoryState::Undecided
         }
     }
 }
@@ -141,10 +154,6 @@ impl GameStructure {
     }
 }
 
-fn flatten(x:i8, y:i8, z:i8) -> i8 {
-    return x + 4*y + 16*z
-}
-
 // fn expand(index:i8) -> (i8, i8, i8) {
 //     return (index % 4, (index / 4) % 4, index / 16)
 // }
@@ -193,7 +202,12 @@ fn play_at(structure : &GameStructure, state : &mut GameState, x:i8, y:i8) {
     };
     state.points[flat_coordinate as usize] = PointState::Piece(state.current_color);
     for line in structure.points[flat_coordinate as usize].lines.clone() {
-        state.lines[line as usize] = add_ball(state.lines[line as usize], state.current_color);
+        let line_state = add_ball(state.lines[line as usize], state.current_color);
+        match line_state {
+            LineState::Win(color) => state.victory_state = VictoryState::Win(color),
+            _ => (),
+        }
+        state.lines[line as usize] = line_state;
     }
     state.current_color = flip_color(state.current_color);
 }
@@ -207,14 +221,68 @@ fn play_at_random(structure : &GameStructure, state : &mut GameState) {
     }
 }
 
+enum Move {
+    Play {x : i8, y : i8},
+    Surrender
+}
+
+trait SogoAI {
+    fn reset_game(&self);
+    fn execute_move(&self, state : &GameState) -> Move;
+}
+
+
+#[allow(dead_code)] // Empty structs are unstable.
+struct RandomSogoAI {
+    structure : GameStructure
+}
+
+impl RandomSogoAI {
+    fn new(structure : GameStructure) -> RandomSogoAI {
+        RandomSogoAI { structure : structure }
+    }
+}
+
+impl SogoAI for RandomSogoAI {
+    fn reset_game(&self) { }
+    fn execute_move(&self, state : &GameState) -> Move {
+        let moves = legal_moves(state);
+        let position = thread_rng().choose(&moves);
+        match position {
+            Some(&(x, y)) => Move::Play {x:x, y:y},
+            None => Move::Surrender
+        }
+    }
+}
+
+fn run_match<T : SogoAI, U : SogoAI>(structure : &GameStructure, white_player : T, black_player : U) -> GameState {
+    let mut i = 0;
+
+    let mut state = GameState::new();
+    while state.victory_state == VictoryState::Undecided {
+        let action = if i % 2 == 0 {white_player.execute_move(&state)} else {black_player.execute_move(&state)};
+        match action {
+            Move::Play { x, y} => play_at(structure, &mut state, x, y),
+            Move::Surrender => state.victory_state = VictoryState::Win(flip_color(state.current_color))
+        };
+        i += 1;
+    }
+    return state;
+}
+
 fn main() {
     let game_structure = GameStructure::new();
 
     let mut mystate = GameState::new();
-    println!("{:?}", z_value(&mystate, 0, 2));
+    //println!("{:?}", z_value(&mystate, 0, 2));
     for _ in 0..40 {
         play_at_random(&game_structure, &mut mystate);
     }
-    println!("{:?}", z_value(&mystate, 0, 2));
-    println!("{:?}", mystate.lines[4]);
+    //println!("{:?}", z_value(&mystate, 0, 2));
+    //println!("{:?}", mystate.lines[4]);
+
+    let p1 = RandomSogoAI::new(GameStructure::new());
+    let p2 = RandomSogoAI::new(GameStructure::new());
+    let state = run_match(&GameStructure::new(), p1, p2);
+    println!("{:?}", state.victory_state);
 }
