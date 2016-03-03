@@ -15,4 +15,9 @@ The resulting executable can be run via
 
     > ./target/debug/sogo
 
-Builds are executed automatically for each commit and pull request.
+To get a better performance, compile and run with
+
+    > cargo build --release
+    > ./target/release/sogo
+
+Builds are checked automatically for each commit and pull request.
