@@ -237,12 +237,12 @@ trait SogoAI {
 
 #[allow(dead_code)] // Empty structs are unstable.
 struct RandomSogoAI {
-    structure : GameStructure
+    alibi : i8,
 }
 
 impl RandomSogoAI {
-    fn new(structure : GameStructure) -> RandomSogoAI {
-        RandomSogoAI { structure : structure }
+    fn new() -> RandomSogoAI {
+        RandomSogoAI { alibi : 42 }
     }
 }
 
@@ -258,7 +258,7 @@ impl SogoAI for RandomSogoAI {
     }
 }
 
-fn run_match<T : SogoAI, U : SogoAI>(structure : &GameStructure, white_player : T, black_player : U) -> GameState {
+fn run_match<T : SogoAI, U : SogoAI>(structure : &GameStructure, white_player : &T, black_player : &U) -> GameState {
     let mut i = 0;
 
     let mut state = GameState::new();
@@ -279,13 +279,12 @@ fn run_match<T : SogoAI, U : SogoAI>(structure : &GameStructure, white_player : 
 }
 
 fn main() {
-    //let game_structure = GameStructure::new();
-    // TODO: Figure out a way to reuse the game_structure.
-
+    let structure = GameStructure::new();
+    let p1 = RandomSogoAI::new();
+    let p2 = RandomSogoAI::new();
     for _ in 0..20 {
-        let p1 = RandomSogoAI::new(GameStructure::new());
-        let p2 = RandomSogoAI::new(GameStructure::new());
-        let state = run_match(&GameStructure::new(), p1, p2);
+        let state = run_match(&structure, &p1, &p2);
         println!("The game took {:?} turns and ended with {:?}.", state.age, state.victory_state);
     }
+    //println!("done.")
 }
