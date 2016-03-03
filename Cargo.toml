@@ -1,7 +1,7 @@
 [package]
 name = "sogo"
 version = "0.1.0"
-authors = ["Rolf Sievers <rosievers@googlemail.com>"]
+authors = ["Rolf Sievers <rolf.sievers@posteo.de>"]
 
 [dependencies]
 rand = "*"
