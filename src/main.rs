@@ -78,17 +78,26 @@ struct GameState {
     lines  : [LineState; 76],  // something something mutable?
     current_color : PlayerColor,
     victory_state : VictoryState,
-    age : i8 // how many balls were played?
+    age : i8, // how many balls were played?
+    legal_moves : Vec<(i8, i8)>,
 }
 
 impl GameState {
     pub fn new() -> GameState {
+        // The board is empty and all moves are legal
+        let mut legal = Vec::new();
+        for x in 0..4 {
+            for y in 0..4 {
+                legal.push((x, y));
+            }
+        }
         GameState {
             points : [PointState::Empty; 64],
             lines : [LineState::Empty; 76],
             current_color : PlayerColor::White,
             victory_state : VictoryState::Undecided,
             age : 0,
+            legal_moves : legal,
         }
     }
 }
@@ -182,27 +191,27 @@ fn z_value(game_state : &GameState, x : i8, y : i8) -> Option<i8> {
     return None
 }
 
-fn legal_moves(game_state : &GameState) -> Vec<(i8, i8)> {
-    let mut result = Vec::new();
-    for x in 0..4 {
-        for y in 0..4 {
-            let height = z_value(game_state, x, y);
-            match height {
-                Some(_) => result.push((x, y)),
-                None => ()
-            }
-        }
-    }
-    return result;
-}
-
 fn play_at(structure : &GameStructure, state : &mut GameState, x:i8, y:i8) {
     let z = z_value(&state, x, y);
     let flat_coordinate = match z {
         Some(z) => flatten(x, y, z),
         None => panic!("Added a ball on a forbidden row")
     };
+    // Place a colored piece at the coordinate
     state.points[flat_coordinate as usize] = PointState::Piece(state.current_color);
+    // Update the legal moves, if the z-coordinate is 3
+    // I make use of the fact that the z coordinate is occupying the top two bits.
+    if flat_coordinate >= 4*4*3 {
+        // As the legal moves will be mixed up during play, we need to search through all.
+        for i in 0..state.legal_moves.len() {
+            if state.legal_moves[i] == (x, y) {
+                state.legal_moves.swap_remove(i);
+                // Removes an element from anywhere in the vector and return it, replacing it with the last element.
+                // This does not preserve ordering, but is O(1).
+                break;
+            }
+        }
+    }
     for line in structure.points[flat_coordinate as usize].lines.clone() {
         let line_state = add_ball(state.lines[line as usize], state.current_color);
         match line_state {
@@ -249,8 +258,7 @@ impl RandomSogoAI {
 impl SogoAI for RandomSogoAI {
     fn reset_game(&self) { }
     fn execute_move(&self, state : &GameState) -> Move {
-        let moves = legal_moves(state);
-        let position = thread_rng().choose(&moves);
+        let position = thread_rng().choose(&state.legal_moves);
         match position {
             Some(&(x, y)) => Move::Play {x:x, y:y},
             None => Move::Surrender
@@ -282,9 +290,9 @@ fn main() {
     let structure = GameStructure::new();
     let p1 = RandomSogoAI::new();
     let p2 = RandomSogoAI::new();
-    for _ in 0..20 {
+    for _ in 0..100000 {
         let state = run_match(&structure, &p1, &p2);
-        println!("The game took {:?} turns and ended with {:?}.", state.age, state.victory_state);
+        //println!("The game took {:?} turns and ended with {:?}.", state.age, state.victory_state);
     }
-    //println!("done.")
+    println!("done.")
 }
