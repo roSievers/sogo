@@ -77,7 +77,8 @@ struct GameState {
     points : [PointState; 64],
     lines  : [LineState; 76],  // something something mutable?
     current_color : PlayerColor,
-    victory_state : VictoryState
+    victory_state : VictoryState,
+    age : i8 // how many balls were played?
 }
 
 impl GameState {
@@ -86,7 +87,8 @@ impl GameState {
             points : [PointState::Empty; 64],
             lines : [LineState::Empty; 76],
             current_color : PlayerColor::White,
-            victory_state : VictoryState::Undecided
+            victory_state : VictoryState::Undecided,
+            age : 0,
         }
     }
 }
@@ -209,17 +211,18 @@ fn play_at(structure : &GameStructure, state : &mut GameState, x:i8, y:i8) {
         }
         state.lines[line as usize] = line_state;
     }
+    state.age += 1;
     state.current_color = flip_color(state.current_color);
 }
 
-fn play_at_random(structure : &GameStructure, state : &mut GameState) {
-    let moves = legal_moves(&state);
-    let position = thread_rng().choose(&moves);
-    match position {
-        Some(&(x, y)) => play_at(structure, state, x, y),
-        None => panic!("can't play on that board")
-    }
-}
+// fn play_at_random(structure : &GameStructure, state : &mut GameState) {
+//     let moves = legal_moves(&state);
+//     let position = thread_rng().choose(&moves);
+//     match position {
+//         Some(&(x, y)) => play_at(structure, state, x, y),
+//         None => panic!("can't play on that board")
+//     }
+// }
 
 enum Move {
     Play {x : i8, y : i8},
@@ -260,6 +263,10 @@ fn run_match<T : SogoAI, U : SogoAI>(structure : &GameStructure, white_player : 
 
     let mut state = GameState::new();
     while state.victory_state == VictoryState::Undecided {
+        if state.age == 64 {
+            state.victory_state = VictoryState::Draw;
+            return state;
+        }
         let action = if i % 2 == 0 {white_player.execute_move(&state)} else {black_player.execute_move(&state)};
         match action {
             Move::Play { x, y} => play_at(structure, &mut state, x, y),
@@ -267,22 +274,18 @@ fn run_match<T : SogoAI, U : SogoAI>(structure : &GameStructure, white_player : 
         };
         i += 1;
     }
+    // println!("{:?}", i);
     return state;
 }
 
 fn main() {
-    let game_structure = GameStructure::new();
+    //let game_structure = GameStructure::new();
+    // TODO: Figure out a way to reuse the game_structure.
 
-    let mut mystate = GameState::new();
-    //println!("{:?}", z_value(&mystate, 0, 2));
-    for _ in 0..40 {
-        play_at_random(&game_structure, &mut mystate);
+    for _ in 0..20 {
+        let p1 = RandomSogoAI::new(GameStructure::new());
+        let p2 = RandomSogoAI::new(GameStructure::new());
+        let state = run_match(&GameStructure::new(), p1, p2);
+        println!("The game took {:?} turns and ended with {:?}.", state.age, state.victory_state);
     }
-    //println!("{:?}", z_value(&mystate, 0, 2));
-    //println!("{:?}", mystate.lines[4]);
-
-    let p1 = RandomSogoAI::new(GameStructure::new());
-    let p2 = RandomSogoAI::new(GameStructure::new());
-    let state = run_match(&GameStructure::new(), p1, p2);
-    println!("{:?}", state.victory_state);
 }
