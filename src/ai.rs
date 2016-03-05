@@ -4,6 +4,7 @@ extern crate rand;
 use self::rand::{thread_rng, Rng};
 use game;
 
+#[derive(Debug)]
 pub enum Move {
     Play {x : i8, y : i8},
     Surrender
@@ -50,9 +51,43 @@ impl SogoAI for RandomSogoAI {
     fn reset_game(&self) { }
     fn execute_move(&self, state : &game::GameState) -> Move {
         let position = thread_rng().choose(&state.legal_moves);
+        // Rust also implements a faster random generator, but it needs to be stored outside of this
+        // small function. Caching the RNG might help anyways.
         match position {
             Some(&(x, y)) => Move::Play {x:x, y:y},
             None => Move::Surrender
         }
     }
 }
+
+// Implementing a min-max tree as well as framework for scoring functions.
+
+// pub enum MinMaxTree {
+//     // M is the type of the move, T is the type of the gamestate.
+//     Unexpanded(game::GameState), // A gamestate is stored, but the game isn't over yet.
+//     Branching(Vec<(Move, MinMaxTree)>),
+//     GameOver(game::GameState), // A gamestate is stored and the game is over.
+//     Scored { score : f32, content : MinMaxTree},
+// }
+//
+// impl MinMaxTree {
+//     pub fn new(root : game::GameState) -> MinMaxTree {
+//         MinMaxTree::Unexpanded(root)
+//     }
+//     pub fn expand(&mut self, depth : i8, expander : extern fn (game::GameState)){
+//         match self {
+//             Unexpanded(state) =>
+//             GameOver(_) => return,
+//         }
+//     }
+//     // pub fn min_max_decision(&mut self, depth : i8,
+//     //     expander         : extern fn(game::GameState) -> Option<Vec<game::GameState>>,
+//     //     scoring_function : extern fn(game::GameState) -> f32)
+//     //         -> Move {
+//     //     if depth > 0 {
+//     //
+//     //     } else {
+//     //         // Score the current
+//     //     }
+//     // }
+// }

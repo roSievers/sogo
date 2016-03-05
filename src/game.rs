@@ -99,8 +99,8 @@ impl GameState {
 }
 
 pub struct GameStructure {
-    points : Vec<Point>,
-    lines  : Vec<Line>
+    pub points : Vec<Point>,
+    pub lines  : Vec<Line>
 }
 
 impl GameStructure {
