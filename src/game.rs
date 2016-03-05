@@ -1,8 +1,21 @@
 
+use std::ops::{Not};
+
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum PlayerColor {
     White,
     Black
+}
+
+impl Not for PlayerColor {
+    type Output = PlayerColor;
+
+    fn not(self) -> PlayerColor {
+        match self {
+            PlayerColor::White => PlayerColor::Black,
+            PlayerColor::Black => PlayerColor::White
+        }
+    }
 }
 
 pub fn flip_color(c : PlayerColor) -> PlayerColor {
@@ -69,6 +82,7 @@ pub enum VictoryState {
     Draw
 }
 
+//#[derive(Clone)]
 pub struct GameState {
     pub points : [PointState; 64],
     pub lines  : [LineState; 76],  // something something mutable?
@@ -76,6 +90,27 @@ pub struct GameState {
     pub victory_state : VictoryState,
     pub age : i8, // how many balls were played?
     pub legal_moves : Vec<(i8, i8)>,
+}
+
+impl Clone for GameState {
+    fn clone(&self) -> GameState {
+        let mut point_clone = [PointState::Empty; 64];
+        let mut line_clone  = [LineState::Empty; 76];
+        for i in 0..64 {
+            point_clone[i] = self.points[i].clone();
+        }
+        for i in 0..76 {
+            line_clone[i] = self.lines[i].clone();
+        }
+        GameState {
+            points : point_clone,
+            lines  : line_clone,
+            current_color : self.current_color.clone(),
+            victory_state : self.victory_state.clone(),
+            age : self.age.clone(),
+            legal_moves : self.legal_moves.clone(),
+        }
+    }
 }
 
 impl GameState {

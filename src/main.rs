@@ -11,10 +11,11 @@ struct VictoryStats {
 
 fn main() {
     let structure = game::GameStructure::new();
-    let p1 = ai::RandomSogoAI::new();
-    let p2 = human_ai::HumanPlayer::Active;//ai::RandomSogoAI::new();
+    let p2 = ai::EasyJudgementAI::new();
+    let p1 = human_ai::HumanPlayer::Active;
+    //let p2 = ai::RandomSogoAI::new();
     let mut statics = VictoryStats { white : 0, black : 0, draws : 0};
-    for _ in 0..2 {
+    for _ in 0..1 {
         let state = ai::run_match(&structure, &p1, &p2);
         match state.victory_state {
             game::VictoryState::Win(game::PlayerColor::White) => statics.white += 1,
@@ -24,7 +25,7 @@ fn main() {
 
         }
         //println!("The game took {:?} turns and ended with {:?}.", state.age, state.victory_state);
-        human_ai::print_gamestate(&state);
+        //human_ai::print_gamestate(&state);
     }
-    println!("There where {} white and {} black wins as well as {} draws.", statics.white, statics.black, statics.draws);
+    println!("There were {} white and {} black wins as well as {} draws.", statics.white, statics.black, statics.draws);
 }
