@@ -39,6 +39,12 @@ pub fn flatten(x:i8, y:i8, z:i8) -> i8 {
     return x + 4*y + 16*z
 }
 
+#[derive(Debug)]
+pub enum Move {
+    Play {x : i8, y : i8},
+    Surrender
+}
+
 pub struct Line {
     points : [Point; 4]
 }
@@ -193,7 +199,14 @@ impl GameStructure {
 //     return (index % 4, (index / 4) % 4, index / 16)
 // }
 
-pub fn add_ball(line_state : LineState, new_color : PlayerColor) -> LineState {
+pub fn execute_move(structure : &GameStructure, state : &mut GameState, play : Move) {
+    match play {
+        Move::Surrender   => state.victory_state = VictoryState::Win(!state.current_color),
+        Move::Play {x, y} => play_at(structure, state, x, y),
+    }
+}
+
+fn add_ball(line_state : LineState, new_color : PlayerColor) -> LineState {
     match line_state {
         LineState::Empty => LineState::Pure { color : new_color, count : 1},
         LineState::Pure { color : current_color, count : old_count} =>
@@ -206,7 +219,7 @@ pub fn add_ball(line_state : LineState, new_color : PlayerColor) -> LineState {
     }
 }
 
-pub fn z_value(game_state : &GameState, x : i8, y : i8) -> Option<i8> {
+fn z_value(game_state : &GameState, x : i8, y : i8) -> Option<i8> {
     for z in 0..4 {
         if game_state.points[flatten(x, y, z) as usize] == PointState::Empty {
             return Some(z)
@@ -215,7 +228,7 @@ pub fn z_value(game_state : &GameState, x : i8, y : i8) -> Option<i8> {
     return None
 }
 
-pub fn play_at(structure : &GameStructure, state : &mut GameState, x:i8, y:i8) {
+fn play_at(structure : &GameStructure, state : &mut GameState, x:i8, y:i8) {
     let z = z_value(&state, x, y);
     let flat_coordinate = match z {
         Some(z) => flatten(x, y, z),

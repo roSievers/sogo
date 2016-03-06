@@ -3,13 +3,7 @@
 extern crate rand;
 use self::rand::{thread_rng, Rng};
 use game;
-use game::{GameState, GameStructure, VictoryState, LineState};
-
-#[derive(Debug)]
-pub enum Move {
-    Play {x : i8, y : i8},
-    Surrender
-}
+use game::{GameState, GameStructure, VictoryState, LineState, Move};
 
 pub trait SogoAI {
     fn reset_game(&self);
@@ -26,10 +20,7 @@ pub fn run_match<T : SogoAI, U : SogoAI>(structure : &GameStructure, white_playe
             return state;
         }
         let action = if i % 2 == 0 {white_player.execute_move(&state)} else {black_player.execute_move(&state)};
-        match action {
-            Move::Play { x, y} => game::play_at(structure, &mut state, x, y),
-            Move::Surrender => state.victory_state = VictoryState::Win(!state.current_color)
-        };
+        game::execute_move(structure, &mut state, action);
         i += 1;
     }
     // println!("{:?}", i);
@@ -42,6 +33,7 @@ pub struct RandomSogoAI {
     alibi : i8,
 }
 
+#[allow(dead_code)]
 impl RandomSogoAI {
     pub fn new() -> RandomSogoAI {
         RandomSogoAI { alibi : 42 }
@@ -65,6 +57,7 @@ pub struct EasyJudgementAI {
     structure : game::GameStructure,
 }
 
+#[allow(dead_code)]
 impl EasyJudgementAI {
     pub fn new() -> EasyJudgementAI {
         EasyJudgementAI { structure : game::GameStructure::new() }
@@ -81,7 +74,7 @@ impl SogoAI for EasyJudgementAI {
         for play in &state.legal_moves {
             let (x, y) = play.clone();
             let mut my_state = state.clone();
-            game::play_at(&self.structure, &mut my_state, x, y);
+            game::execute_move(&self.structure, &mut my_state, Move::Play{x:x, y:y});
             let mut score : i32 = 0;
             for i in 0..76 {
                 let line = my_state.lines[i];
@@ -123,13 +116,10 @@ impl SogoAI for NestedJudgementAI {
         for play in &state.legal_moves {
             let (x, y) = play.clone();
             let mut my_state = state.clone();
-            game::play_at(&self.opponent_ai.structure, &mut my_state, x, y);
+            game::execute_move(&self.opponent_ai.structure, &mut my_state, Move::Play{x:x, y:y});
             // Here is the important difference, we allow the opponent_ai to make a move.
             let action = self.opponent_ai.execute_move(&my_state);
-            match action {
-                Move::Play { x:x2, y:y2} => game::play_at(&self.opponent_ai.structure, &mut my_state, x2, y2),
-                Move::Surrender => my_state.victory_state = VictoryState::Win(!state.current_color)
-            };
+            game::execute_move(&self.opponent_ai.structure, &mut my_state, action);
 
             let mut score : i32 = 0;
             for i in 0..76 {
@@ -153,56 +143,56 @@ impl SogoAI for NestedJudgementAI {
 }
 
 // Monte Carlo Tree search
-
-struct MCNode {
-    state : GameState,
-    children : MCBranching,
-    play_count : i32,
-    victory_count : i32,
-}
-
-enum MCBranching {
-    GameOver(MCBackprobagation),
-    Unexpanded,
-    Expanded(Vec<MCNode>),
-}
-
-#[derive(Clone, Copy)]
-enum MCBackprobagation {
-    Victory,
-    Loss
-}
-
-impl MCNode {
-    fn new(state : GameState) -> MCNode {
-        MCNode {
-            state : state,
-            children : MCBranching::Unexpanded,
-            play_count : 0,
-            victory_count : 0,
-        }
-    }
-}
-
-// fn mc_step(node : &mut MCNode) -> MCBackprobagation {
-//     match node.children {
-//         // This path has been fully explored
-//         MCBranching::GameOver(v) => return v.clone(),
-//         MCBranching::Unexpanded => node.children = MCBranching::Expanded(full_expansion(&node.state)),
-//         MCBranching::Expanded(children) => return mc_step(choose_random_mut(&mut children)),
-//     }
-//     panic!();
+//
+// struct MCNode {
+//     state : GameState,
+//     children : MCBranching,
+//     play_count : i32,
+//     victory_count : i32,
 // }
-
-fn choose_mutable<T>(vec: &mut Vec<T>) -> &mut T {
-    let id = rand::thread_rng().gen::<usize>() % vec.len() as usize;
-
-    return &mut vec[id];
-}
-
-fn full_expansion(state : &GameState) -> Vec<MCNode> {
-    panic!("");
-}
+//
+// enum MCBranching {
+//     GameOver(MCBackprobagation),
+//     Unexpanded,
+//     Expanded(Vec<MCNode>),
+// }
+//
+// #[derive(Clone, Copy)]
+// enum MCBackprobagation {
+//     Victory,
+//     Loss
+// }
+//
+// impl MCNode {
+//     fn new(state : GameState) -> MCNode {
+//         MCNode {
+//             state : state,
+//             children : MCBranching::Unexpanded,
+//             play_count : 0,
+//             victory_count : 0,
+//         }
+//     }
+// }
+//
+// // fn mc_step(node : &mut MCNode) -> MCBackprobagation {
+// //     match node.children {
+// //         // This path has been fully explored
+// //         MCBranching::GameOver(v) => return v.clone(),
+// //         MCBranching::Unexpanded => node.children = MCBranching::Expanded(full_expansion(&node.state)),
+// //         MCBranching::Expanded(children) => return mc_step(choose_random_mut(&mut children)),
+// //     }
+// //     panic!();
+// // }
+//
+// fn choose_mutable<T>(vec: &mut Vec<T>) -> &mut T {
+//     let id = rand::thread_rng().gen::<usize>() % vec.len() as usize;
+//
+//     return &mut vec[id];
+// }
+//
+// fn full_expansion(state : &GameState) -> Vec<MCNode> {
+//     panic!("");
+// }
 
 // Implementing a min-max tree as well as framework for scoring functions.
 // Later..

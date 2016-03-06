@@ -1,7 +1,7 @@
 
 use std::io;
 use game;
-use game::{GameState, PointState, PlayerColor};
+use game::{GameState, PointState, PlayerColor, Move};
 use ai;
 
 pub enum HumanPlayer {
@@ -30,7 +30,7 @@ pub fn print_gamestate(state : &GameState) {
     println!("  ----   ----   ----   ---- ");
 }
 
-pub fn ask_for_move() -> ai::Move {
+pub fn ask_for_move() -> Move {
     let mut instruction = String::new();
 
     io::stdin().read_line(&mut instruction).expect("Failed to read line");
@@ -39,16 +39,16 @@ pub fn ask_for_move() -> ai::Move {
     let _index = s.find(instruction.chars().nth(0).unwrap());
 
     let index = match _index {
-        None    => return ai::Move::Surrender,
+        None    => return Move::Surrender,
         Some(i) => i as i8
     };
 
-    return ai::Move::Play { x : index % 4, y : index / 4};
+    return Move::Play { x : index % 4, y : index / 4};
 }
 
 impl ai::SogoAI for HumanPlayer {
     fn reset_game(&self) { }
-    fn execute_move(&self, state : &game::GameState) -> ai::Move {
+    fn execute_move(&self, state : &game::GameState) -> Move {
         print_gamestate(state);
         ask_for_move()
     }
