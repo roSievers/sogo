@@ -18,13 +18,6 @@ impl Not for PlayerColor {
     }
 }
 
-pub fn flip_color(c : PlayerColor) -> PlayerColor {
-    match c {
-        PlayerColor::White => PlayerColor::Black,
-        PlayerColor::Black => PlayerColor::White
-    }
-}
-
 #[allow(dead_code)] // Dead code is allowed, because I want x, y, z even if I don't use it.
 #[derive(Debug)]
 pub struct Point {
@@ -226,7 +219,7 @@ pub fn play_at(structure : &GameStructure, state : &mut GameState, x:i8, y:i8) {
     let z = z_value(&state, x, y);
     let flat_coordinate = match z {
         Some(z) => flatten(x, y, z),
-        None => panic!("Added a ball on a forbidden row")
+        None => panic!("Added a ball at ({}, {}), which is already full.", x, y)
     };
     // Place a colored piece at the coordinate
     state.points[flat_coordinate as usize] = PointState::Piece(state.current_color);
@@ -252,5 +245,5 @@ pub fn play_at(structure : &GameStructure, state : &mut GameState, x:i8, y:i8) {
         state.lines[line as usize] = line_state;
     }
     state.age += 1;
-    state.current_color = flip_color(state.current_color);
+    state.current_color = !state.current_color;
 }

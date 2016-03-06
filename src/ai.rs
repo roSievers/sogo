@@ -3,7 +3,7 @@
 extern crate rand;
 use self::rand::{thread_rng, Rng};
 use game;
-use game::{GameState, GameStructure, VictoryState, PlayerColor, LineState};
+use game::{GameState, GameStructure, VictoryState, LineState};
 
 #[derive(Debug)]
 pub enum Move {
@@ -89,7 +89,56 @@ impl SogoAI for EasyJudgementAI {
                     LineState::Empty  => 0,
                     LineState::Win(_) => 1000, // If I'm still allowed to play, that must have been my win.
                     LineState::Mixed  => 0,
-                    LineState::Pure { color: color, count: count } =>
+                    LineState::Pure { color, count } =>
+                        (count * count * (if color == my_color {1} else {-1})) as i32,
+                }
+            }
+            if score > best_score {
+                best_move = Move::Play {x:x, y:y};
+                best_score = score;
+            }
+            //println!("{:?} - {:?} -> {:?}", score, best_score, best_move);
+        }
+        best_move
+    }
+}
+
+pub struct NestedJudgementAI {
+    opponent_ai : EasyJudgementAI,
+}
+
+impl NestedJudgementAI {
+    pub fn new() -> NestedJudgementAI {
+        NestedJudgementAI { opponent_ai : EasyJudgementAI::new()}
+    }
+}
+
+impl SogoAI for NestedJudgementAI {
+    fn reset_game(&self) {}
+    fn execute_move(&self, state : &GameState) -> Move {
+        // Go through all available moves and jude the outcome.
+        let mut best_move = Move::Surrender;
+        let mut best_score : i32 = -1000; // If no move has a better score, just surrender.
+        let my_color = state.current_color;
+        for play in &state.legal_moves {
+            let (x, y) = play.clone();
+            let mut my_state = state.clone();
+            game::play_at(&self.opponent_ai.structure, &mut my_state, x, y);
+            // Here is the important difference, we allow the opponent_ai to make a move.
+            let action = self.opponent_ai.execute_move(&my_state);
+            match action {
+                Move::Play { x:x2, y:y2} => game::play_at(&self.opponent_ai.structure, &mut my_state, x2, y2),
+                Move::Surrender => my_state.victory_state = VictoryState::Win(!state.current_color)
+            };
+
+            let mut score : i32 = 0;
+            for i in 0..76 {
+                let line = my_state.lines[i];
+                score += match line {
+                    LineState::Empty  => 0,
+                    LineState::Win(color) => 1000 * (if color == my_color {1} else {-1}), // If I'm still allowed to play, that must have been my win.
+                    LineState::Mixed  => 0,
+                    LineState::Pure { color, count } =>
                         (count * count * (if color == my_color {1} else {-1})) as i32,
                 }
             }
