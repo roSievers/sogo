@@ -39,10 +39,18 @@ pub fn flatten(x:i8, y:i8, z:i8) -> i8 {
     return x + 4*y + 16*z
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Move {
     Play {x : i8, y : i8},
     Surrender
+}
+
+impl Move {
+    pub fn new(coords : &(i8, i8)) -> Move {
+        match coords {
+            &(x, y) => Move::Play {x:x, y:y}
+        }
+    }
 }
 
 pub struct Line {
@@ -132,6 +140,9 @@ impl GameState {
     }
 }
 
+// TODO: Recomputing this and passing it around gets boring at some point.
+// Once we abstract over several different game structures
+// this should be moved to a macro and be created once at compile time.
 pub struct GameStructure {
     pub points : Vec<Point>,
     pub lines  : Vec<Line>
@@ -204,6 +215,12 @@ pub fn execute_move(structure : &GameStructure, state : &mut GameState, play : M
         Move::Surrender   => state.victory_state = VictoryState::Win(!state.current_color),
         Move::Play {x, y} => play_at(structure, state, x, y),
     }
+}
+
+pub fn execute_move_functional(structure : &GameStructure, state : &GameState, play : Move) -> GameState {
+    let mut result = state.clone();
+    execute_move(structure, &mut result, play);
+    return result;
 }
 
 fn add_ball(line_state : LineState, new_color : PlayerColor) -> LineState {
