@@ -4,6 +4,7 @@ use game;
 use game::{GameState, PointState, PlayerColor, Move};
 use ai;
 
+#[allow(dead_code)]
 pub enum HumanPlayer {
     Active
 }

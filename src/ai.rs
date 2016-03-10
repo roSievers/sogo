@@ -139,10 +139,14 @@ fn expand_node_total<T : Default>(structure : &GameStructure, node : &mut Node<T
             let mut children = Vec::new();
             for action in &node.state.legal_moves {
                 let play = Move::new(action);
-                children.push(Node::new(
+                let mut child = Node::new(
                     game::execute_move_functional(structure, &node.state, play.clone()),
                     Some(play)
-                ));
+                );
+                if child.state.victory_state != VictoryState::Undecided {
+                    child.children = Branching::GameOver;
+                }
+                children.push(child);
             }
             if children.len() == 0 {
                 node.children = Branching::GameOver;
@@ -278,37 +282,4 @@ fn max_min(node : &mut Node<MinMaxTagging>) {
 //
 // fn full_expansion(state : &GameState) -> Vec<MCNode> {
 //     panic!("");
-// }
-
-// Implementing a min-max tree as well as framework for scoring functions.
-// Later..
-
-// pub enum MinMaxTree {
-//     // M is the type of the move, T is the type of the gamestate.
-//     Unexpanded(GameState), // A gamestate is stored, but the game isn't over yet.
-//     Branching(Vec<(Move, MinMaxTree)>),
-//     GameOver(GameState), // A gamestate is stored and the game is over.
-//     Scored { score : f32, content : MinMaxTree},
-// }
-//
-// impl MinMaxTree {
-//     pub fn new(root : GameState) -> MinMaxTree {
-//         MinMaxTree::Unexpanded(root)
-//     }
-//     pub fn expand(&mut self, depth : i8, expander : extern fn (GameState)){
-//         match self {
-//             Unexpanded(state) =>
-//             GameOver(_) => return,
-//         }
-//     }
-//     // pub fn min_max_decision(&mut self, depth : i8,
-//     //     expander         : extern fn(GameState) -> Option<Vec<GameState>>,
-//     //     scoring_function : extern fn(GameState) -> f32)
-//     //         -> Move {
-//     //     if depth > 0 {
-//     //
-//     //     } else {
-//     //         // Score the current
-//     //     }
-//     // }
 // }
