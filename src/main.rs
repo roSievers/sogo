@@ -11,13 +11,9 @@ struct VictoryStats {
 
 fn main() {
     let structure = game::GameStructure::new();
-    let p2 = ai::TreeJudgementAI::new();
-    //let p1 = ai::TreeJudgementAI::new();
-    let p1 = human_ai::HumanPlayer::Active;
-    //let p1 = ai::EasyJudgementAI::new();
-    //let p1 = ai::RandomSogoAI::new();
-    //let p1 = ai::NestedJudgementAI::new();
-    //let p2 = ai::EasyJudgementAI::new();
+    let p2 = ai::TreeJudgementAI::new(3);
+    let p1 = ai::TreeJudgementAI::new(5);
+    //let p1 = human_ai::HumanPlayer::Active;
     let mut statics = VictoryStats { white : 0, black : 0, draws : 0};
     for _ in 0..1 {
         let state = ai::run_match(&structure, &p1, &p2);

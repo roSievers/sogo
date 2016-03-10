@@ -59,77 +59,6 @@ impl SogoAI for RandomSogoAI {
     }
 }
 
-pub struct EasyJudgementAI {
-    structure : game::GameStructure,
-}
-
-#[allow(dead_code)]
-impl EasyJudgementAI {
-    pub fn new() -> EasyJudgementAI {
-        EasyJudgementAI { structure : game::GameStructure::new() }
-    }
-}
-
-impl SogoAI for EasyJudgementAI {
-    fn reset_game(&self) {}
-    fn register_opponent_action(&self, _ : &Move) {}
-    fn decide_action(&self, state : &GameState) -> Move {
-        // Go through all available moves and jude the outcome.
-        let my_color = state.current_color;
-        let mut best_move = Move::Surrender;
-        let mut best_score : i32 = -1000; // If no move has a better score, just surrender.
-        for play in &state.legal_moves {
-            let (x, y) = play.clone();
-            let mut my_state = state.clone();
-            game::execute_move(&self.structure, &mut my_state, Move::Play{x:x, y:y});
-            let score = easy_judgement(&my_state, my_color);
-            if score > best_score {
-                best_move = Move::Play {x:x, y:y};
-                best_score = score;
-            }
-            //println!("{:?} - {:?} -> {:?}", score, best_score, best_move);
-        }
-        best_move
-    }
-}
-
-pub struct NestedJudgementAI {
-    opponent_ai : EasyJudgementAI,
-}
-
-impl NestedJudgementAI {
-    pub fn new() -> NestedJudgementAI {
-        NestedJudgementAI { opponent_ai : EasyJudgementAI::new()}
-    }
-}
-
-impl SogoAI for NestedJudgementAI {
-    fn reset_game(&self) {}
-    fn register_opponent_action(&self, _ : &Move) {}
-    fn decide_action(&self, state : &GameState) -> Move {
-        // Go through all available moves and jude the outcome.
-        let my_color = state.current_color;
-        let mut best_move = Move::Surrender;
-        let mut best_score : i32 = -1000; // If no move has a better score, just surrender.
-        for play in &state.legal_moves {
-            let (x, y) = play.clone();
-            let mut my_state = state.clone();
-            game::execute_move(&self.opponent_ai.structure, &mut my_state, Move::Play{x:x, y:y});
-            // Here is the important difference, we allow the opponent_ai to make a move.
-            let action = self.opponent_ai.decide_action(&my_state);
-            game::execute_move(&self.opponent_ai.structure, &mut my_state, action);
-
-            let score = easy_judgement(&my_state, my_color);
-            if score > best_score {
-                best_move = Move::Play {x:x, y:y};
-                best_score = score;
-            }
-            //println!("{:?} - {:?} -> {:?}", score, best_score, best_move);
-        }
-        best_move
-    }
-}
-
 fn easy_judgement (state : &GameState, my_color : PlayerColor) -> i32 {
     let mut score = 0;
     for i in 0..76 {
@@ -147,12 +76,13 @@ fn easy_judgement (state : &GameState, my_color : PlayerColor) -> i32 {
 
 pub struct TreeJudgementAI {
     structure : game::GameStructure,
+    search_depth : i8,
 }
 
 #[allow(dead_code)]
 impl TreeJudgementAI {
-    pub fn new() -> TreeJudgementAI {
-        TreeJudgementAI { structure : game::GameStructure::new() }
+    pub fn new(depth : i8) -> TreeJudgementAI {
+        TreeJudgementAI { structure : game::GameStructure::new(), search_depth : depth }
     }
 }
 
@@ -164,14 +94,16 @@ impl SogoAI for TreeJudgementAI {
         // Create a tree from the current gamestate.
         let mut tree : Node<MinMaxTagging> = Node::new(state.clone(), None);
         // Completely expand the first n layers
-        fully_expand_to_depth(&self.structure, &mut tree, 4);
+        fully_expand_to_depth(&self.structure, &mut tree, self.search_depth);
 
         let my_easy_judgement = |state : &GameState| MinMaxTagging { value : easy_judgement(state, my_color), from_action : None};
 
         tag_all_leaves(&my_easy_judgement, &mut tree);
         min_max(&mut tree);
-        println!("Deciding on {:?} with valuation {:?}.", tree.tag.from_action, tree.tag.value);
-        return tree.tag.from_action.unwrap_or(Move::Surrender);
+
+        let action = tree.tag.from_action.unwrap_or(Move::Surrender);
+        println!("{:?} deciding on '{:?}' with valuation {:?}.", my_color, action, tree.tag.value);
+        return action;
     }
 }
 
