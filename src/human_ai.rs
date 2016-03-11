@@ -31,7 +31,7 @@ pub fn print_gamestate(state : &GameState) {
     println!("  ----   ----   ----   ---- ");
 }
 
-pub fn ask_for_action() -> Action {
+pub fn ask_for_move() -> Action {
     let mut instruction = String::new();
 
     io::stdin().read_line(&mut instruction).expect("Failed to read line");
@@ -44,7 +44,7 @@ pub fn ask_for_action() -> Action {
         Some(i) => i as i8
     };
 
-    return Action::Play { x : index % 4, y : index / 4};
+    return Action::new(index % 4, index / 4);
 }
 
 impl ai::SogoAI for HumanPlayer {
@@ -54,6 +54,6 @@ impl ai::SogoAI for HumanPlayer {
     }
     fn decide_action(&self, state : &game::GameState) -> Action {
         print_gamestate(state);
-        ask_for_action()
+        ask_for_move()
     }
 }

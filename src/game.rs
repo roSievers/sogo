@@ -39,17 +39,16 @@ pub fn flatten(x:i8, y:i8, z:i8) -> i8 {
     return x + 4*y + 16*z
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum Action {
     Play {x : i8, y : i8},
     Surrender
 }
 
+#[allow(dead_code)]
 impl Action {
-    pub fn new(coords : &(i8, i8)) -> Action {
-        match coords {
-            &(x, y) => Action::Play {x:x, y:y}
-        }
+    pub fn new(x : i8, y : i8) -> Action {
+        Action::Play {x:x, y:y}
     }
 }
 
@@ -109,7 +108,7 @@ pub struct GameState {
     pub current_color : PlayerColor,
     pub victory_state : VictoryState,
     pub age : i8, // how many balls were played?
-    pub legal_actions : Vec<(i8, i8)>,
+    pub legal_actions : Vec<Action>,
 }
 
 impl Clone for GameState {
@@ -139,7 +138,7 @@ impl GameState {
         let mut legal = Vec::new();
         for x in 0..4 {
             for y in 0..4 {
-                legal.push((x, y));
+                legal.push(Action::new(x,y));
             }
         }
         GameState {
@@ -223,16 +222,16 @@ impl GameStructure {
 //     return (index % 4, (index / 4) % 4, index / 16)
 // }
 
-pub fn execute_action(structure : &GameStructure, state : &mut GameState, play : Action) {
+pub fn execute_action(structure : &GameStructure, state : &mut GameState, play : &Action) {
     match play {
-        Action::Surrender   => state.victory_state = VictoryState::Win(!state.current_color),
-        Action::Play {x, y} => play_at(structure, state, x, y),
+        &Action::Surrender   => state.victory_state = VictoryState::Win(!state.current_color),
+        &Action::Play {x, y} => play_at(structure, state, x, y),
     }
 }
 
-pub fn execute_action_functional(structure : &GameStructure, state : &GameState, play : Action) -> GameState {
+pub fn execute_action_functional(structure : &GameStructure, state : &GameState, play : &Action) -> GameState {
     let mut result = state.clone();
-    execute_action(structure, &mut result, play);
+    execute_action(structure, &mut result, &play);
     return result;
 }
 
@@ -249,6 +248,7 @@ fn add_ball(line_state : LineState, new_color : PlayerColor) -> LineState {
     }
 }
 
+// Idea: This could be cached inside each gamestate.
 fn z_value(game_state : &GameState, x : i8, y : i8) -> Option<i8> {
     for z in 0..4 {
         if game_state.points[flatten(x, y, z) as usize] == PointState::Empty {
@@ -271,7 +271,8 @@ fn play_at(structure : &GameStructure, state : &mut GameState, x:i8, y:i8) {
     if flat_coordinate >= 4*4*3 {
         // As the legal actions will be mixed up during play, we need to search through all.
         for i in 0..state.legal_actions.len() {
-            if state.legal_actions[i] == (x, y) {
+            if state.legal_actions[i] == Action::new(x, y) {
+                println!("removed something.");
                 state.legal_actions.swap_remove(i);
                 // Removes an element from anywhere in the vector and return it, replacing it with the last element.
                 // This does not preserve ordering, but is O(1).

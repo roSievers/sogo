@@ -26,7 +26,7 @@ pub fn run_match<T : SogoAI, U : SogoAI>(structure : &GameStructure, white_playe
         }
         let action = if i % 2 == 0 {white_player.decide_action(&state)} else {black_player.decide_action(&state)};
         if i % 2 == 0 {black_player.register_opponent_action(&action)} else {white_player.register_opponent_action(&action)};
-        game::execute_action(structure, &mut state, action);
+        game::execute_action(structure, &mut state, &action);
         i += 1;
     }
     // println!("{:?}", i);
@@ -50,13 +50,10 @@ impl SogoAI for RandomSogoAI {
     fn reset_game(&self) { }
     fn register_opponent_action(&self, _ : &Action) {}
     fn decide_action(&self, state : &GameState) -> Action {
-        let position = thread_rng().choose(&state.legal_actions);
+        thread_rng().choose(&state.legal_actions)
+            .map_or(Action::Surrender, |&a| a.clone())
         // Rust also implements a faster random generator, but it needs to be stored outside of this
         // small function. Caching the RNG might help anyways.
-        match position {
-            Some(&(x, y)) => Action::Play {x:x, y:y},
-            None => Action::Surrender
-        }
     }
 }
 
@@ -64,12 +61,9 @@ pub fn random_playout(structure : &GameStructure, state : &GameState) -> Victory
     let mut my_state = state.clone();
     let mut rng = thread_rng();
     while my_state.victory_state == VictoryState::Undecided {
-        let action = {
-            match rng.choose(&my_state.legal_actions) {
-                Some(&(x, y)) => Action::Play {x:x, y:y},
-                None => Action::Surrender
-            }
-        };
+        let surrender = Action::Surrender;
+        let action = rng.choose(&state.legal_actions)
+                        .unwrap_or(&surrender);
         game::execute_action(structure, &mut my_state, action);
     }
     return my_state.victory_state;
@@ -172,10 +166,9 @@ fn expand_node_total<T : Default>(structure : &GameStructure, node : &mut Node<T
         Branching::Unexpanded => {
             let mut children = Vec::new();
             for action in &node.state.legal_actions {
-                let play = Action::new(action);
                 let mut child = Node::new(
-                    game::execute_action_functional(structure, &node.state, play.clone()),
-                    Some(play)
+                    game::execute_action_functional(structure, &node.state, &action),
+                    Some(action.clone())
                 );
                 if child.state.victory_state != VictoryState::Undecided {
                     child.children = Branching::GameOver;
