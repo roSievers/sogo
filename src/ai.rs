@@ -2,6 +2,7 @@
 // Some example AIs are also contained.
 extern crate rand;
 use self::rand::{thread_rng, Rng};
+//use self::rand::distributions::{IndependentSample, Range};
 use game;
 use game::{GameState, GameStructure, PlayerColor, VictoryState, VictoryStats, LineState, Move};
 
@@ -319,6 +320,87 @@ fn monte_carlo_judgement(structure : &GameStructure, state : &GameState, my_colo
     }
 }
 
+/*
 // Monte Carlo Tree search
 // This is fancy, I'll do it later, when I learned about Monte Carlo and
 // about Tree search.
+
+// This tree structure is slightly more lazy than the Node tree and can expand a node partially.
+struct MCNode {
+    state : GameState,
+    children : MCBranching,
+    parent_action : Option<Move>, // If this isn't the root, how did we get here?
+    wins : i32,
+    total : i32,
+}
+
+enum LazyMCNode {
+    Unexpanded(Move),
+    // We need a Box to avoid [E0072], which forbids nested struct/enums.
+    // use 'rustc --explain E0072' to find out more.
+    Expanded(Box<MCNode>)
+}
+
+// I don't want to evaluate all possible branches to save time and memory.
+// Only the possible moves are stored and can be lazily changed to a gamestate.
+enum MCBranching {
+    GameOver(VictoryState),
+    Branch(Vec<LazyMCNode>),
+}
+
+impl MCNode {
+    pub fn new(state : GameState, parent_action : Option<Move>) -> MCNode {
+        let children = {
+            if state.victory_state == VictoryState::Undecided {
+                let mut children = Vec::new();
+                for point in state.legal_moves {
+                    children.push(LazyMCNode::Unexpanded(Move::new(&point)));
+                }
+                MCBranching::Branch(children)
+            } else {
+                MCBranching::GameOver(state.victory_state.clone())
+            }
+        };
+        MCNode {
+            state : state,
+            children : children,
+            parent_action : parent_action,
+            wins : 0,
+            total : 0,
+        }
+    }
+}
+
+fn random_mc_playout(structure : &GameStructure, node : &mut MCNode) -> VictoryState {
+    // First, check if we have children.
+    match node.children {
+        MCBranching::GameOver(victory_state) => victory_state,
+        MCBranching::Branch(mut children) => {
+            // Randomly choose a child
+            //let mut child = thread_rng().choose(&children).unwrap();
+            // OK, here we have a problem with the saveness of Rust.
+            // We can't own children and a child at the same time. This is kind of the reason why
+            // choosing randomly can only return a reference to the child.
+            // I'll try fixing this by choosing a random index first and then extracting that child.
+            // That should give me ownership of a child and suspend children until the reference to
+            // child becomes invalid. (At the end of this match block.)
+            let between = Range::new(0, children.len());
+            let index = between.ind_sample(&mut thread_rng());
+            let mut child = children[index];
+            match child {
+                // if this is a unexpanded node, do a random playout, count it and propagate it upwards.
+                LazyMCNode::Unexpanded(action) => {
+                    let mut new_state = node.state.clone();
+                    game::execute_move(structure, &mut new_state, action);
+                    // This is bad, we clone the state twice.
+                    // TODO: Define random_playout_ip to speed this up.
+                    random_playout(structure, &mut new_state)
+                }
+                LazyMCNode::Expanded(boxed_node) => {
+                    VictoryState::Draw
+                }
+            }
+        }
+    }
+}
+*/
