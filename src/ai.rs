@@ -3,7 +3,7 @@
 extern crate rand;
 use self::rand::{thread_rng, Rng};
 use game;
-use game::{GameState, GameStructure, PlayerColor, VictoryState, LineState, Move};
+use game::{GameState, GameStructure, PlayerColor, VictoryState, VictoryStats, LineState, Move};
 
 pub trait SogoAI {
     fn reset_game(&self);
@@ -59,13 +59,44 @@ impl SogoAI for RandomSogoAI {
     }
 }
 
+pub fn random_playout(structure : &GameStructure, state : &GameState) -> VictoryState {
+    let mut my_state = state.clone();
+    let mut rng = thread_rng();
+    while my_state.victory_state == VictoryState::Undecided {
+        let action = {
+            match rng.choose(&my_state.legal_moves) {
+                Some(&(x, y)) => Move::Play {x:x, y:y},
+                None => Move::Surrender
+            }
+        };
+        game::execute_move(structure, &mut my_state, action);
+    }
+    return my_state.victory_state;
+}
+
+
+pub fn random_playout_sample(structure : &GameStructure, state : &GameState, number : i32) -> VictoryStats {
+    let mut statics = game::VictoryStats::new();
+    for _ in 0..number {
+        let result = random_playout(&structure, &state);
+        match result {
+            game::VictoryState::Win(game::PlayerColor::White) => statics.white += 1,
+            game::VictoryState::Win(game::PlayerColor::Black) => statics.black += 1,
+            game::VictoryState::Draw      => statics.draws  += 1,
+            game::VictoryState::Undecided => panic!("The game_state should never be undecided after a random playout."),
+        }
+    }
+    return statics
+}
+
 fn easy_judgement (state : &GameState, my_color : PlayerColor) -> i32 {
     let mut score = 0;
     for i in 0..76 {
         let line = state.lines[i];
         score += match line {
             LineState::Empty  => 0,
-            LineState::Win(color) => 1000 * (if color == my_color {1} else {-1}), // If I'm still allowed to play, that must have been my win.
+            LineState::Win(color) => 1000 * (if color == my_color {1} else {-1}),
+                // If I'm still allowed to play, that must have been my win.
             LineState::Mixed  => 0,
             LineState::Pure { color, count } =>
                 (count * count * (if color == my_color {1} else {-1})) as i32,
@@ -74,6 +105,7 @@ fn easy_judgement (state : &GameState, my_color : PlayerColor) -> i32 {
     return score
 }
 
+#[allow(dead_code)]
 pub struct TreeJudgementAI {
     structure : game::GameStructure,
     search_depth : i8,
@@ -96,7 +128,8 @@ impl SogoAI for TreeJudgementAI {
         // Completely expand the first n layers
         fully_expand_to_depth(&self.structure, &mut tree, self.search_depth);
 
-        let my_easy_judgement = |state : &GameState| MinMaxTagging { value : easy_judgement(state, my_color), from_action : None};
+        let my_easy_judgement = |state : &GameState|
+            MinMaxTagging { value : easy_judgement(state, my_color), from_action : None};
 
         tag_all_leaves(&my_easy_judgement, &mut tree);
         min_max(&mut tree);
@@ -232,54 +265,60 @@ fn max_min(node : &mut Node<MinMaxTagging>) {
     }
 }
 
+// Pure Monte Carlo AI
+// For each possible move, a number of playouts is run. This should give an approximate information
+// about the value of each move.
+
+#[allow(dead_code)]
+pub struct MonteCarloAI {
+    endurance : i32, // How many random games am I allowed to play each turn?
+    structure : GameStructure,
+}
+
+#[allow(dead_code)]
+impl MonteCarloAI {
+    pub fn new(endurance : i32) -> MonteCarloAI {
+        MonteCarloAI{endurance : endurance, structure : GameStructure::new()}
+    }
+}
+
+impl SogoAI for MonteCarloAI {
+    fn reset_game(&self) {}
+    // Some information may be preserved after an opponent's turn.
+    // Tree based algorithms may carry over part of the search tree.
+    fn register_opponent_action(&self, _ : &Move) {}
+    fn decide_action(&self, state : &GameState) -> Move {
+        let my_color = state.current_color;
+        let endurance_per_action = self.endurance / (state.legal_moves.len() as i32);
+        // Create a tree from the current gamestate.
+        let mut tree : Node<MinMaxTagging> = Node::new(state.clone(), None);
+        // Completely expand the first layer
+        fully_expand_to_depth(&self.structure, &mut tree, 1);
+
+        let judgement = |state : &GameState|
+            MinMaxTagging {
+                value : monte_carlo_judgement(&self.structure, state, my_color, endurance_per_action),
+                from_action : None
+            };
+
+        tag_all_leaves(&judgement, &mut tree);
+        min_max(&mut tree);
+
+        let action = tree.tag.from_action.unwrap_or(Move::Surrender);
+        //println!("{:?} deciding on '{:?}' with valuation {:?}.", my_color, action, tree.tag.value);
+        return action;
+    }
+}
+
+fn monte_carlo_judgement(structure : &GameStructure, state : &GameState, my_color : PlayerColor, amount : i32) -> i32 {
+    let stats = random_playout_sample(structure, state, amount);
+    if my_color == PlayerColor::White {
+        return stats.white - stats.black;
+    } else {
+        return stats.black - stats.white;
+    }
+}
+
 // Monte Carlo Tree search
-//
-// struct MCNode {
-//     state : GameState,
-//     children : MCBranching,
-//     play_count : i32,
-//     victory_count : i32,
-// }
-//
-// enum MCBranching {
-//     GameOver(MCBackprobagation),
-//     Unexpanded,
-//     Expanded(Vec<MCNode>),
-// }
-//
-// #[derive(Clone, Copy)]
-// enum MCBackprobagation {
-//     Victory,
-//     Loss
-// }
-//
-// impl MCNode {
-//     fn new(state : GameState) -> MCNode {
-//         MCNode {
-//             state : state,
-//             children : MCBranching::Unexpanded,
-//             play_count : 0,
-//             victory_count : 0,
-//         }
-//     }
-// }
-//
-// // fn mc_step(node : &mut MCNode) -> MCBackprobagation {
-// //     match node.children {
-// //         // This path has been fully explored
-// //         MCBranching::GameOver(v) => return v.clone(),
-// //         MCBranching::Unexpanded => node.children = MCBranching::Expanded(full_expansion(&node.state)),
-// //         MCBranching::Expanded(children) => return mc_step(choose_random_mut(&mut children)),
-// //     }
-// //     panic!();
-// // }
-//
-// fn choose_mutable<T>(vec: &mut Vec<T>) -> &mut T {
-//     let id = rand::thread_rng().gen::<usize>() % vec.len() as usize;
-//
-//     return &mut vec[id];
-// }
-//
-// fn full_expansion(state : &GameState) -> Vec<MCNode> {
-//     panic!("");
-// }
+// This is fancy, I'll do it later, when I learned about Monte Carlo and
+// about Tree search.

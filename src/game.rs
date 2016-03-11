@@ -89,6 +89,19 @@ pub enum VictoryState {
     Draw
 }
 
+#[derive(Debug, Copy, Clone)]
+pub struct VictoryStats {
+    pub white : i32,
+    pub black : i32,
+    pub draws : i32,
+}
+
+impl VictoryStats {
+    pub fn new() -> VictoryStats {
+        VictoryStats { white : 0, black : 0, draws : 0}
+    }
+}
+
 //#[derive(Clone)]
 pub struct GameState {
     pub points : [PointState; 64],
@@ -275,5 +288,8 @@ fn play_at(structure : &GameStructure, state : &mut GameState, x:i8, y:i8) {
         state.lines[line as usize] = line_state;
     }
     state.age += 1;
+    if state.age == 64 && state.victory_state == VictoryState::Undecided {
+        state.victory_state = VictoryState::Draw;
+    }
     state.current_color = !state.current_color;
 }
