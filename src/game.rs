@@ -135,14 +135,6 @@ impl GameStructure {
                 }
             }
         }
-        // Check if this really produced the right amount of points.
-        // Assert the property, that point_box[i].flat_coordinate = i.
-        assert_eq!(point_box.len(), 64);
-        let mut i = 0;
-        for p in &point_box {
-            assert_eq!(p.flat_coordinate, i);
-            i += 1;
-        }
 
         // Initialize a vector of all Lines.
         let mut line_box = Vec::new();
@@ -166,11 +158,6 @@ impl GameStructure {
         line_box.push(Line::new(3, 3, 0,-1,-1, 1));
         line_box.push(Line::new(0, 3, 0, 1,-1, 1));
 
-        // Verify if the line_box has the right length.
-        // TODO: This shoud be a test, not part of the normal code.
-        assert_eq!(line_box.len(), 76);
-
-
         // Refenence the line ID in the points.
         let mut i = 0;
         for line in &line_box {
@@ -181,6 +168,18 @@ impl GameStructure {
         }
         GameStructure { points : point_box, lines : line_box }
     }
+}
+
+#[test]
+fn test_game_structure_size() {
+    let structure = GameStructure::new();
+    assert_eq!(structure.points.len(), 4*4*4);
+    let mut i = 0;
+    for p in &structure.points {
+        assert_eq!(p.flat_coordinate, i);
+        i += 1;
+    }
+    assert_eq!(structure.lines.len(), 76);
 }
 
 // fn expand(index:i8) -> (i8, i8, i8) {
