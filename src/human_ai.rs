@@ -2,9 +2,9 @@
 use std::io;
 use game;
 use game::{GameState, PointState, PlayerColor, Action};
-use ai;
+use ai::{SogoAI};
 
-#[allow(dead_code)]
+#[allow(dead_code)] // Sometimes this AI may not be in use, this is why I allow dead code.
 pub enum HumanPlayer {
     Active
 }
@@ -47,7 +47,7 @@ pub fn ask_for_move() -> Action {
     return Action::new(index % 4, index / 4);
 }
 
-impl ai::SogoAI for HumanPlayer {
+impl SogoAI for HumanPlayer {
     fn reset_game(&self) {}
     fn register_opponent_action(&self, action : &Action) {
         println!("Enemy action was: {:?}", action);

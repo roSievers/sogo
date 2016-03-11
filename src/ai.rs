@@ -26,7 +26,7 @@ pub fn run_match<T : SogoAI, U : SogoAI>(structure : &GameStructure, white_playe
         }
         let action = if i % 2 == 0 {white_player.decide_action(&state)} else {black_player.decide_action(&state)};
         if i % 2 == 0 {black_player.register_opponent_action(&action)} else {white_player.register_opponent_action(&action)};
-        game::execute_action(structure, &mut state, &action);
+        state.execute_action(structure, &action);
         i += 1;
     }
     // println!("{:?}", i);
@@ -64,7 +64,7 @@ pub fn random_playout(structure : &GameStructure, state : &GameState) -> Victory
         let surrender = Action::Surrender;
         let action = rng.choose(&state.legal_actions)
                         .unwrap_or(&surrender);
-        game::execute_action(structure, &mut my_state, action);
+        my_state.execute_action(structure, action);
     }
     return my_state.victory_state;
 }
@@ -121,12 +121,12 @@ impl SogoAI for TreeJudgementAI {
         // Create a tree from the current gamestate.
         let mut tree : Node<MinMaxTagging> = Node::new(state.clone(), None);
         // Completely expand the first n layers
-        fully_expand_to_depth(&self.structure, &mut tree, self.search_depth);
+        tree.fully_expand_to_depth(&self.structure, self.search_depth);
 
         let my_easy_judgement = |state : &GameState|
             MinMaxTagging { value : easy_judgement(state, my_color), from_action : None};
 
-        tag_all_leaves(&my_easy_judgement, &mut tree);
+        tree.tag_all_leaves(&my_easy_judgement);
         min_max(&mut tree);
 
         let action = tree.tag.from_action.unwrap_or(Action::Surrender);
@@ -158,62 +158,63 @@ impl<T : Default> Node<T> {
             tag : Default::default(),
         }
     }
-}
 
-// Expands the current supplied node, if neccessary. The return value indicates if it was expanded.
-fn expand_node_total<T : Default>(structure : &GameStructure, node : &mut Node<T>) -> bool {
-    match node.children {
-        Branching::Unexpanded => {
-            let mut children = Vec::new();
-            for action in &node.state.legal_actions {
-                let mut child = Node::new(
-                    game::execute_action_functional(structure, &node.state, &action),
-                    Some(action.clone())
-                );
-                if child.state.victory_state != VictoryState::Undecided {
-                    child.children = Branching::GameOver;
+    // Expands the current supplied node, if neccessary. The return value indicates if it was expanded.
+    fn expand_total(&mut self, structure : &GameStructure) -> bool {
+        match self.children {
+            Branching::Unexpanded => {
+                let mut children = Vec::new();
+                for action in &self.state.legal_actions {
+                    let mut child = Node::new(
+                        self.state.execute_action_functional(structure, &action),
+                        Some(action.clone())
+                    );
+                    if child.state.victory_state != VictoryState::Undecided {
+                        child.children = Branching::GameOver;
+                    }
+                    children.push(child);
                 }
-                children.push(child);
-            }
-            if children.len() == 0 {
-                node.children = Branching::GameOver;
-            } else {
-                node.children = Branching::Expanded(children);
-            }
-            true
-        },
-        Branching::Expanded(_) => false,
-        Branching::GameOver => false,
+                if children.len() == 0 {
+                    self.children = Branching::GameOver;
+                } else {
+                    self.children = Branching::Expanded(children);
+                }
+                true
+            },
+            Branching::Expanded(_) => false,
+            Branching::GameOver => false,
+        }
     }
-}
 
-fn fully_expand_to_depth<T : Default>(structure : &GameStructure, node : &mut Node<T>, depth : i8) {
-    if depth <= 0 {
-        return;
+    fn fully_expand_to_depth(&mut self, structure : &GameStructure, depth : i8) {
+        if depth <= 0 {
+            return;
+        }
+        self.expand_total(structure);
+        match self.children {
+            Branching::Expanded(ref mut children) => {
+                for mut child in children {
+                    child.fully_expand_to_depth(structure, depth-1);
+                }
+            },
+            _ => (),
+        }
     }
-    expand_node_total(structure, node);
-    match node.children {
-        Branching::Expanded(ref mut children) => {
-            for mut child in children {
-                fully_expand_to_depth(structure, &mut child, depth-1);
-            }
-        },
-        _ => (),
-    }
-}
 
-fn tag_all_leaves<T : Default, F>(tagger : &F, node : &mut Node<T>)
+    fn tag_all_leaves<F>(&mut self, tagger : &F)
     where F : Fn(&GameState) -> T {
-    match node.children {
-        Branching::GameOver   => node.tag = tagger(&node.state),
-        Branching::Unexpanded => node.tag = tagger(&node.state),
-        Branching::Expanded(ref mut children) => {
-            for mut child in children {
-                tag_all_leaves(tagger, &mut child);
+        match self.children {
+            Branching::GameOver   => self.tag = tagger(&self.state),
+            Branching::Unexpanded => self.tag = tagger(&self.state),
+            Branching::Expanded(ref mut children) => {
+                for mut child in children {
+                    child.tag_all_leaves(tagger);
+                }
             }
         }
     }
 }
+
 
 #[derive(Default, Debug)]
 struct MinMaxTagging {
@@ -287,7 +288,7 @@ impl SogoAI for MonteCarloAI {
         // Create a tree from the current gamestate.
         let mut tree : Node<MinMaxTagging> = Node::new(state.clone(), None);
         // Completely expand the first layer
-        fully_expand_to_depth(&self.structure, &mut tree, 1);
+        tree.fully_expand_to_depth(&self.structure, 1);
 
         let judgement = |state : &GameState|
             MinMaxTagging {
@@ -295,7 +296,7 @@ impl SogoAI for MonteCarloAI {
                 from_action : None
             };
 
-        tag_all_leaves(&judgement, &mut tree);
+        tree.tag_all_leaves(&judgement);
         min_max(&mut tree);
 
         let action = tree.tag.from_action.unwrap_or(Action::Surrender);

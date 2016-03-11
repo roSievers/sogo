@@ -7,6 +7,7 @@ pub enum PlayerColor {
     Black
 }
 
+// This implementation allows PlayerColor::White == !PlayerColor::Black.
 impl Not for PlayerColor {
     type Output = PlayerColor;
 
@@ -45,7 +46,6 @@ pub enum Action {
     Surrender
 }
 
-#[allow(dead_code)]
 impl Action {
     pub fn new(x : i8, y : i8) -> Action {
         Action::Play {x:x, y:y}
@@ -81,6 +81,21 @@ pub enum LineState {
     Win(PlayerColor),
 }
 
+impl LineState {
+    fn add_ball_functional(line_state : LineState, new_color : PlayerColor) -> LineState {
+        match line_state {
+            LineState::Empty => LineState::Pure { color : new_color, count : 1},
+            LineState::Pure { color : current_color, count : old_count} =>
+                if current_color != new_color { LineState::Mixed } else {
+                    if old_count == 3 {LineState::Win(current_color)}
+                    else {LineState::Pure {color : current_color, count : old_count+1}}
+                },
+            LineState::Mixed => LineState::Mixed,
+            LineState::Win(_) => panic!("A filled line can't accept any more balls.")
+        }
+    }
+}
+
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum VictoryState {
     Undecided,
@@ -101,60 +116,9 @@ impl VictoryStats {
     }
 }
 
-//#[derive(Clone)]
-pub struct GameState {
-    pub points : [PointState; 64],
-    pub lines  : [LineState; 76],  // something something mutable?
-    pub current_color : PlayerColor,
-    pub victory_state : VictoryState,
-    pub age : i8, // how many balls were played?
-    pub legal_actions : Vec<Action>,
-}
-
-impl Clone for GameState {
-    fn clone(&self) -> GameState {
-        let mut point_clone = [PointState::Empty; 64];
-        let mut line_clone  = [LineState::Empty; 76];
-        for i in 0..64 {
-            point_clone[i] = self.points[i].clone();
-        }
-        for i in 0..76 {
-            line_clone[i] = self.lines[i].clone();
-        }
-        GameState {
-            points : point_clone,
-            lines  : line_clone,
-            current_color : self.current_color.clone(),
-            victory_state : self.victory_state.clone(),
-            age : self.age.clone(),
-            legal_actions : self.legal_actions.clone(),
-        }
-    }
-}
-
-impl GameState {
-    pub fn new() -> GameState {
-        // The board is empty and all actions are legal
-        let mut legal = Vec::new();
-        for x in 0..4 {
-            for y in 0..4 {
-                legal.push(Action::new(x,y));
-            }
-        }
-        GameState {
-            points : [PointState::Empty; 64],
-            lines : [LineState::Empty; 76],
-            current_color : PlayerColor::White,
-            victory_state : VictoryState::Undecided,
-            age : 0,
-            legal_actions : legal,
-        }
-    }
-}
-
 // TODO: Recomputing this and passing it around gets boring at some point.
 // Once we abstract over several different game structures
-// this should be actiond to a macro and be created once at compile time.
+// this should be moved to a macro and be created once at compile time.
 pub struct GameStructure {
     pub points : Vec<Point>,
     pub lines  : Vec<Line>
@@ -203,6 +167,7 @@ impl GameStructure {
         line_box.push(Line::new(0, 3, 0, 1,-1, 1));
 
         // Verify if the line_box has the right length.
+        // TODO: This shoud be a test, not part of the normal code.
         assert_eq!(line_box.len(), 76);
 
 
@@ -222,75 +187,115 @@ impl GameStructure {
 //     return (index % 4, (index / 4) % 4, index / 16)
 // }
 
-pub fn execute_action(structure : &GameStructure, state : &mut GameState, play : &Action) {
-    match play {
-        &Action::Surrender   => state.victory_state = VictoryState::Win(!state.current_color),
-        &Action::Play {x, y} => play_at(structure, state, x, y),
-    }
+
+
+//#[derive(Clone)]
+pub struct GameState {
+    pub points : [PointState; 64], // Maybe we want to change this into a Vector.
+    pub lines  : [LineState; 76],
+    pub current_color : PlayerColor,
+    pub victory_state : VictoryState,
+    pub age : i8, // how many balls were played?
+    pub legal_actions : Vec<Action>,
 }
 
-pub fn execute_action_functional(structure : &GameStructure, state : &GameState, play : &Action) -> GameState {
-    let mut result = state.clone();
-    execute_action(structure, &mut result, &play);
-    return result;
-}
-
-fn add_ball(line_state : LineState, new_color : PlayerColor) -> LineState {
-    match line_state {
-        LineState::Empty => LineState::Pure { color : new_color, count : 1},
-        LineState::Pure { color : current_color, count : old_count} =>
-            if current_color != new_color { LineState::Mixed } else {
-                if old_count == 3 {LineState::Win(current_color)}
-                else {LineState::Pure {color : current_color, count : old_count+1}}
-            },
-        LineState::Mixed => LineState::Mixed,
-        LineState::Win(_) => panic!("A filled line can't accept any more balls.")
-    }
-}
-
-// Idea: This could be cached inside each gamestate.
-fn z_value(game_state : &GameState, x : i8, y : i8) -> Option<i8> {
-    for z in 0..4 {
-        if game_state.points[flatten(x, y, z) as usize] == PointState::Empty {
-            return Some(z)
+impl Clone for GameState {
+    fn clone(&self) -> GameState {
+        let mut point_clone = [PointState::Empty; 64];
+        let mut line_clone  = [LineState::Empty; 76];
+        for i in 0..64 {
+            point_clone[i] = self.points[i].clone();
+        }
+        for i in 0..76 {
+            line_clone[i] = self.lines[i].clone();
+        }
+        GameState {
+            points : point_clone,
+            lines  : line_clone,
+            current_color : self.current_color.clone(),
+            victory_state : self.victory_state.clone(),
+            age : self.age.clone(),
+            legal_actions : self.legal_actions.clone(),
         }
     }
-    return None
 }
 
-fn play_at(structure : &GameStructure, state : &mut GameState, x:i8, y:i8) {
-    let z = z_value(&state, x, y);
-    let flat_coordinate = match z {
-        Some(z) => flatten(x, y, z),
-        None => panic!("Added a ball at ({}, {}), which is already full.", x, y)
-    };
-    // Place a colored piece at the coordinate
-    state.points[flat_coordinate as usize] = PointState::Piece(state.current_color);
-    // Update the legal actions, if the z-coordinate is 3
-    // I make use of the fact that the z coordinate is occupying the top two bits.
-    if flat_coordinate >= 4*4*3 {
-        // As the legal actions will be mixed up during play, we need to search through all.
-        for i in 0..state.legal_actions.len() {
-            if state.legal_actions[i] == Action::new(x, y) {
-                println!("removed something.");
-                state.legal_actions.swap_remove(i);
-                // Removes an element from anywhere in the vector and return it, replacing it with the last element.
-                // This does not preserve ordering, but is O(1).
-                break;
+impl GameState {
+    pub fn new() -> GameState {
+        // The board is empty and all actions are legal
+        let mut legal = Vec::new();
+        for x in 0..4 {
+            for y in 0..4 {
+                legal.push(Action::new(x,y));
             }
         }
-    }
-    for line in structure.points[flat_coordinate as usize].lines.clone() {
-        let line_state = add_ball(state.lines[line as usize], state.current_color);
-        match line_state {
-            LineState::Win(color) => state.victory_state = VictoryState::Win(color),
-            _ => (),
+        GameState {
+            points : [PointState::Empty; 64],
+            lines : [LineState::Empty; 76],
+            current_color : PlayerColor::White,
+            victory_state : VictoryState::Undecided,
+            age : 0,
+            legal_actions : legal,
         }
-        state.lines[line as usize] = line_state;
     }
-    state.age += 1;
-    if state.age == 64 && state.victory_state == VictoryState::Undecided {
-        state.victory_state = VictoryState::Draw;
+
+    pub fn execute_action(&mut self, structure : &GameStructure, play : &Action) {
+        match play {
+            &Action::Surrender   => self.victory_state = VictoryState::Win(!self.current_color),
+            &Action::Play {x, y} => self.play_at(structure, x, y),
+        }
     }
-    state.current_color = !state.current_color;
+    pub fn execute_action_functional(&self, structure : &GameStructure, play : &Action) -> GameState {
+        let mut result = self.clone();
+        result.execute_action(structure, &play);
+        return result;
+    }
+
+    // Idea: This could be cached inside each gamestate.
+    fn z_value(&self, x : i8, y : i8) -> Option<i8> {
+        for z in 0..4 {
+            if self.points[flatten(x, y, z) as usize] == PointState::Empty {
+                return Some(z)
+            }
+        }
+        return None
+    }
+
+    fn play_at(&mut self, structure : &GameStructure, x:i8, y:i8) {
+        let z = self.z_value(x, y);
+        let flat_coordinate = match z {
+            Some(z) => flatten(x, y, z),
+            None => panic!("Added a ball at ({}, {}), which is already full.", x, y)
+        };
+        // Place a colored piece at the coordinate
+        self.points[flat_coordinate as usize] = PointState::Piece(self.current_color);
+        // Update the legal actions, if the z-coordinate is 3
+        // I make use of the fact that the z coordinate is occupying the top two bits.
+        if flat_coordinate >= 4*4*3 {
+            // As the legal actions will be mixed up during play, we need to search through all.
+            for i in 0..self.legal_actions.len() {
+                // TODO: Don't construct a new Action object just to compare.
+                if self.legal_actions[i] == Action::new(x, y) {
+                    println!("removed something.");
+                    self.legal_actions.swap_remove(i);
+                    // Removes an element from anywhere in the vector and return it, replacing it with the last element.
+                    // This does not preserve ordering, but is O(1).
+                    break;
+                }
+            }
+        }
+        for line in structure.points[flat_coordinate as usize].lines.clone() {
+            let line_state = LineState::add_ball_functional(self.lines[line as usize], self.current_color);
+            match line_state {
+                LineState::Win(color) => self.victory_state = VictoryState::Win(color),
+                _ => (),
+            }
+            self.lines[line as usize] = line_state;
+        }
+        self.age += 1;
+        if self.age == 64 && self.victory_state == VictoryState::Undecided {
+            self.victory_state = VictoryState::Draw;
+        }
+        self.current_color = !self.current_color;
+    }
 }
