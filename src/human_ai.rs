@@ -1,7 +1,7 @@
 
 use std::io;
 use game;
-use game::{GameState, PointState, PlayerColor, Move};
+use game::{GameState, PointState, PlayerColor, Action};
 use ai;
 
 #[allow(dead_code)]
@@ -31,7 +31,7 @@ pub fn print_gamestate(state : &GameState) {
     println!("  ----   ----   ----   ---- ");
 }
 
-pub fn ask_for_move() -> Move {
+pub fn ask_for_action() -> Action {
     let mut instruction = String::new();
 
     io::stdin().read_line(&mut instruction).expect("Failed to read line");
@@ -40,20 +40,20 @@ pub fn ask_for_move() -> Move {
     let _index = s.find(instruction.chars().nth(0).unwrap());
 
     let index = match _index {
-        None    => return Move::Surrender,
+        None    => return Action::Surrender,
         Some(i) => i as i8
     };
 
-    return Move::Play { x : index % 4, y : index / 4};
+    return Action::Play { x : index % 4, y : index / 4};
 }
 
 impl ai::SogoAI for HumanPlayer {
     fn reset_game(&self) {}
-    fn register_opponent_action(&self, action : &Move) {
+    fn register_opponent_action(&self, action : &Action) {
         println!("Enemy action was: {:?}", action);
     }
-    fn decide_action(&self, state : &game::GameState) -> Move {
+    fn decide_action(&self, state : &game::GameState) -> Action {
         print_gamestate(state);
-        ask_for_move()
+        ask_for_action()
     }
 }

@@ -4,14 +4,14 @@ extern crate rand;
 use self::rand::{thread_rng, Rng};
 //use self::rand::distributions::{IndependentSample, Range};
 use game;
-use game::{GameState, GameStructure, PlayerColor, VictoryState, VictoryStats, LineState, Move};
+use game::{GameState, GameStructure, PlayerColor, VictoryState, VictoryStats, LineState, Action};
 
 pub trait SogoAI {
     fn reset_game(&self);
     // Some information may be preserved after an opponent's turn.
     // Tree based algorithms may carry over part of the search tree.
-    fn register_opponent_action(&self, &Move);
-    fn decide_action(&self, state : &GameState) -> Move;
+    fn register_opponent_action(&self, &Action);
+    fn decide_action(&self, state : &GameState) -> Action;
         // An imutable reference to the game_state is passed for convenience only.
 }
 
@@ -26,14 +26,14 @@ pub fn run_match<T : SogoAI, U : SogoAI>(structure : &GameStructure, white_playe
         }
         let action = if i % 2 == 0 {white_player.decide_action(&state)} else {black_player.decide_action(&state)};
         if i % 2 == 0 {black_player.register_opponent_action(&action)} else {white_player.register_opponent_action(&action)};
-        game::execute_move(structure, &mut state, action);
+        game::execute_action(structure, &mut state, action);
         i += 1;
     }
     // println!("{:?}", i);
     return state;
 }
 
-// An AI which executes random legal moves
+// An AI which executes random legal actions
 #[allow(dead_code)] // Empty structs are unstable.
 pub struct RandomSogoAI {
     alibi : i8,
@@ -48,14 +48,14 @@ impl RandomSogoAI {
 
 impl SogoAI for RandomSogoAI {
     fn reset_game(&self) { }
-    fn register_opponent_action(&self, _ : &Move) {}
-    fn decide_action(&self, state : &GameState) -> Move {
-        let position = thread_rng().choose(&state.legal_moves);
+    fn register_opponent_action(&self, _ : &Action) {}
+    fn decide_action(&self, state : &GameState) -> Action {
+        let position = thread_rng().choose(&state.legal_actions);
         // Rust also implements a faster random generator, but it needs to be stored outside of this
         // small function. Caching the RNG might help anyways.
         match position {
-            Some(&(x, y)) => Move::Play {x:x, y:y},
-            None => Move::Surrender
+            Some(&(x, y)) => Action::Play {x:x, y:y},
+            None => Action::Surrender
         }
     }
 }
@@ -65,12 +65,12 @@ pub fn random_playout(structure : &GameStructure, state : &GameState) -> Victory
     let mut rng = thread_rng();
     while my_state.victory_state == VictoryState::Undecided {
         let action = {
-            match rng.choose(&my_state.legal_moves) {
-                Some(&(x, y)) => Move::Play {x:x, y:y},
-                None => Move::Surrender
+            match rng.choose(&my_state.legal_actions) {
+                Some(&(x, y)) => Action::Play {x:x, y:y},
+                None => Action::Surrender
             }
         };
-        game::execute_move(structure, &mut my_state, action);
+        game::execute_action(structure, &mut my_state, action);
     }
     return my_state.victory_state;
 }
@@ -121,8 +121,8 @@ impl TreeJudgementAI {
 
 impl SogoAI for TreeJudgementAI {
     fn reset_game(&self) {}
-    fn register_opponent_action(&self, _ : &Move) {}
-    fn decide_action(&self, state : &GameState) -> Move {
+    fn register_opponent_action(&self, _ : &Action) {}
+    fn decide_action(&self, state : &GameState) -> Action {
         let my_color = state.current_color;
         // Create a tree from the current gamestate.
         let mut tree : Node<MinMaxTagging> = Node::new(state.clone(), None);
@@ -135,7 +135,7 @@ impl SogoAI for TreeJudgementAI {
         tag_all_leaves(&my_easy_judgement, &mut tree);
         min_max(&mut tree);
 
-        let action = tree.tag.from_action.unwrap_or(Move::Surrender);
+        let action = tree.tag.from_action.unwrap_or(Action::Surrender);
         println!("{:?} deciding on '{:?}' with valuation {:?}.", my_color, action, tree.tag.value);
         return action;
     }
@@ -145,7 +145,7 @@ impl SogoAI for TreeJudgementAI {
 struct Node<T : Default> {
     state : GameState,
     children : Branching<T>,
-    parent_action : Option<Move>, // If this isn't the root, how did we get here?
+    parent_action : Option<Action>, // If this isn't the root, how did we get here?
     tag : T,
 }
 
@@ -156,7 +156,7 @@ enum Branching<T : Default> {
 }
 
 impl<T : Default> Node<T> {
-    pub fn new(state : GameState, parent_action : Option<Move>) -> Node<T> {
+    pub fn new(state : GameState, parent_action : Option<Action>) -> Node<T> {
         Node {
             state : state,
             children : Branching::Unexpanded,
@@ -171,10 +171,10 @@ fn expand_node_total<T : Default>(structure : &GameStructure, node : &mut Node<T
     match node.children {
         Branching::Unexpanded => {
             let mut children = Vec::new();
-            for action in &node.state.legal_moves {
-                let play = Move::new(action);
+            for action in &node.state.legal_actions {
+                let play = Action::new(action);
                 let mut child = Node::new(
-                    game::execute_move_functional(structure, &node.state, play.clone()),
+                    game::execute_action_functional(structure, &node.state, play.clone()),
                     Some(play)
                 );
                 if child.state.victory_state != VictoryState::Undecided {
@@ -225,7 +225,7 @@ fn tag_all_leaves<T : Default, F>(tagger : &F, node : &mut Node<T>)
 #[derive(Default, Debug)]
 struct MinMaxTagging {
     value : i32,
-    from_action : Option<Move>,
+    from_action : Option<Action>,
 }
 
 fn min_max(node : &mut Node<MinMaxTagging>) {
@@ -267,8 +267,8 @@ fn max_min(node : &mut Node<MinMaxTagging>) {
 }
 
 // Pure Monte Carlo AI
-// For each possible move, a number of playouts is run. This should give an approximate information
-// about the value of each move.
+// For each possible action, a number of playouts is run. This should give an approximate information
+// about the value of each action.
 
 #[allow(dead_code)]
 pub struct MonteCarloAI {
@@ -287,10 +287,10 @@ impl SogoAI for MonteCarloAI {
     fn reset_game(&self) {}
     // Some information may be preserved after an opponent's turn.
     // Tree based algorithms may carry over part of the search tree.
-    fn register_opponent_action(&self, _ : &Move) {}
-    fn decide_action(&self, state : &GameState) -> Move {
+    fn register_opponent_action(&self, _ : &Action) {}
+    fn decide_action(&self, state : &GameState) -> Action {
         let my_color = state.current_color;
-        let endurance_per_action = self.endurance / (state.legal_moves.len() as i32);
+        let endurance_per_action = self.endurance / (state.legal_actions.len() as i32);
         // Create a tree from the current gamestate.
         let mut tree : Node<MinMaxTagging> = Node::new(state.clone(), None);
         // Completely expand the first layer
@@ -305,7 +305,7 @@ impl SogoAI for MonteCarloAI {
         tag_all_leaves(&judgement, &mut tree);
         min_max(&mut tree);
 
-        let action = tree.tag.from_action.unwrap_or(Move::Surrender);
+        let action = tree.tag.from_action.unwrap_or(Action::Surrender);
         //println!("{:?} deciding on '{:?}' with valuation {:?}.", my_color, action, tree.tag.value);
         return action;
     }
@@ -329,32 +329,32 @@ fn monte_carlo_judgement(structure : &GameStructure, state : &GameState, my_colo
 struct MCNode {
     state : GameState,
     children : MCBranching,
-    parent_action : Option<Move>, // If this isn't the root, how did we get here?
+    parent_action : Option<Action>, // If this isn't the root, how did we get here?
     wins : i32,
     total : i32,
 }
 
 enum LazyMCNode {
-    Unexpanded(Move),
+    Unexpanded(Action),
     // We need a Box to avoid [E0072], which forbids nested struct/enums.
     // use 'rustc --explain E0072' to find out more.
     Expanded(Box<MCNode>)
 }
 
 // I don't want to evaluate all possible branches to save time and memory.
-// Only the possible moves are stored and can be lazily changed to a gamestate.
+// Only the possible actions are stored and can be lazily changed to a gamestate.
 enum MCBranching {
     GameOver(VictoryState),
     Branch(Vec<LazyMCNode>),
 }
 
 impl MCNode {
-    pub fn new(state : GameState, parent_action : Option<Move>) -> MCNode {
+    pub fn new(state : GameState, parent_action : Option<Action>) -> MCNode {
         let children = {
             if state.victory_state == VictoryState::Undecided {
                 let mut children = Vec::new();
-                for point in state.legal_moves {
-                    children.push(LazyMCNode::Unexpanded(Move::new(&point)));
+                for point in state.legal_actions {
+                    children.push(LazyMCNode::Unexpanded(Action::new(&point)));
                 }
                 MCBranching::Branch(children)
             } else {
@@ -391,7 +391,7 @@ fn random_mc_playout(structure : &GameStructure, node : &mut MCNode) -> VictoryS
                 // if this is a unexpanded node, do a random playout, count it and propagate it upwards.
                 LazyMCNode::Unexpanded(action) => {
                     let mut new_state = node.state.clone();
-                    game::execute_move(structure, &mut new_state, action);
+                    game::execute_action(structure, &mut new_state, action);
                     // This is bad, we clone the state twice.
                     // TODO: Define random_playout_ip to speed this up.
                     random_playout(structure, &mut new_state)

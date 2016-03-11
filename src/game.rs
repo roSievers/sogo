@@ -40,15 +40,15 @@ pub fn flatten(x:i8, y:i8, z:i8) -> i8 {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum Move {
+pub enum Action {
     Play {x : i8, y : i8},
     Surrender
 }
 
-impl Move {
-    pub fn new(coords : &(i8, i8)) -> Move {
+impl Action {
+    pub fn new(coords : &(i8, i8)) -> Action {
         match coords {
-            &(x, y) => Move::Play {x:x, y:y}
+            &(x, y) => Action::Play {x:x, y:y}
         }
     }
 }
@@ -109,7 +109,7 @@ pub struct GameState {
     pub current_color : PlayerColor,
     pub victory_state : VictoryState,
     pub age : i8, // how many balls were played?
-    pub legal_moves : Vec<(i8, i8)>,
+    pub legal_actions : Vec<(i8, i8)>,
 }
 
 impl Clone for GameState {
@@ -128,14 +128,14 @@ impl Clone for GameState {
             current_color : self.current_color.clone(),
             victory_state : self.victory_state.clone(),
             age : self.age.clone(),
-            legal_moves : self.legal_moves.clone(),
+            legal_actions : self.legal_actions.clone(),
         }
     }
 }
 
 impl GameState {
     pub fn new() -> GameState {
-        // The board is empty and all moves are legal
+        // The board is empty and all actions are legal
         let mut legal = Vec::new();
         for x in 0..4 {
             for y in 0..4 {
@@ -148,14 +148,14 @@ impl GameState {
             current_color : PlayerColor::White,
             victory_state : VictoryState::Undecided,
             age : 0,
-            legal_moves : legal,
+            legal_actions : legal,
         }
     }
 }
 
 // TODO: Recomputing this and passing it around gets boring at some point.
 // Once we abstract over several different game structures
-// this should be moved to a macro and be created once at compile time.
+// this should be actiond to a macro and be created once at compile time.
 pub struct GameStructure {
     pub points : Vec<Point>,
     pub lines  : Vec<Line>
@@ -223,16 +223,16 @@ impl GameStructure {
 //     return (index % 4, (index / 4) % 4, index / 16)
 // }
 
-pub fn execute_move(structure : &GameStructure, state : &mut GameState, play : Move) {
+pub fn execute_action(structure : &GameStructure, state : &mut GameState, play : Action) {
     match play {
-        Move::Surrender   => state.victory_state = VictoryState::Win(!state.current_color),
-        Move::Play {x, y} => play_at(structure, state, x, y),
+        Action::Surrender   => state.victory_state = VictoryState::Win(!state.current_color),
+        Action::Play {x, y} => play_at(structure, state, x, y),
     }
 }
 
-pub fn execute_move_functional(structure : &GameStructure, state : &GameState, play : Move) -> GameState {
+pub fn execute_action_functional(structure : &GameStructure, state : &GameState, play : Action) -> GameState {
     let mut result = state.clone();
-    execute_move(structure, &mut result, play);
+    execute_action(structure, &mut result, play);
     return result;
 }
 
@@ -266,13 +266,13 @@ fn play_at(structure : &GameStructure, state : &mut GameState, x:i8, y:i8) {
     };
     // Place a colored piece at the coordinate
     state.points[flat_coordinate as usize] = PointState::Piece(state.current_color);
-    // Update the legal moves, if the z-coordinate is 3
+    // Update the legal actions, if the z-coordinate is 3
     // I make use of the fact that the z coordinate is occupying the top two bits.
     if flat_coordinate >= 4*4*3 {
-        // As the legal moves will be mixed up during play, we need to search through all.
-        for i in 0..state.legal_moves.len() {
-            if state.legal_moves[i] == (x, y) {
-                state.legal_moves.swap_remove(i);
+        // As the legal actions will be mixed up during play, we need to search through all.
+        for i in 0..state.legal_actions.len() {
+            if state.legal_actions[i] == (x, y) {
+                state.legal_actions.swap_remove(i);
                 // Removes an element from anywhere in the vector and return it, replacing it with the last element.
                 // This does not preserve ordering, but is O(1).
                 break;
