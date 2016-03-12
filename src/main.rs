@@ -1,3 +1,4 @@
+#[cfg(test)]
 mod tests;
 
 mod game;
@@ -14,7 +15,7 @@ fn main() {
     //let p1 = ai::TreeJudgementAI::new(4);
     let p1 = human_ai::HumanPlayer::Active;
     let mut statics = VictoryStats { white : 0, black : 0, draws : 0};
-    for i in 0..1000 {
+    for i in 0..1 {
         println!("Game {}.", i);
         let state = ai::run_match(&structure, &p1, &p2);
         match state.victory_state {

@@ -62,9 +62,9 @@ pub fn random_playout(structure : &GameStructure, state : &GameState) -> Victory
     let mut rng = thread_rng();
     while my_state.victory_state == VictoryState::Undecided {
         let surrender = Action::Surrender;
-        let action = rng.choose(&state.legal_actions)
-                        .unwrap_or(&surrender);
-        my_state.execute_action(structure, action);
+        let action = rng.choose(&my_state.legal_actions)
+                        .unwrap_or(&surrender).clone();
+        my_state.execute_action(structure, &action);
     }
     return my_state.victory_state;
 }

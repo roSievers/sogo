@@ -170,13 +170,6 @@ impl GameStructure {
     }
 }
 
-// fn expand(index:i8) -> (i8, i8, i8) {
-//     return (index % 4, (index / 4) % 4, index / 16)
-// }
-
-
-
-//#[derive(Clone)]
 pub struct GameState {
     pub points : [PointState; 64], // Maybe we want to change this into a Vector.
     pub lines  : [LineState; 76],
@@ -263,15 +256,12 @@ impl GameState {
             for i in 0..self.legal_actions.len() {
                 // TODO: Don't construct a new Action object just to compare.
                 if self.legal_actions[i] == Action::new(x, y) {
-                    println!("removed something.");
                     self.legal_actions.swap_remove(i);
                     // Removes an element from anywhere in the vector and return it, replacing it with the last element.
                     // This does not preserve ordering, but is O(1).
                     break;
                 }
             }
-            // Not right either, I need to check if the for loop ever used the if.
-            panic!("The coordinate ({:?}, {:?}) is full, but couldn't be removed from legal_actions.", x, y);
         }
         for line in structure.points[flat_coordinate as usize].lines.clone() {
             let line_state = LineState::add_ball_functional(self.lines[line as usize], self.current_color);
