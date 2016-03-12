@@ -170,18 +170,6 @@ impl GameStructure {
     }
 }
 
-#[test]
-fn test_game_structure_size() {
-    let structure = GameStructure::new();
-    assert_eq!(structure.points.len(), 4*4*4);
-    let mut i = 0;
-    for p in &structure.points {
-        assert_eq!(p.flat_coordinate, i);
-        i += 1;
-    }
-    assert_eq!(structure.lines.len(), 76);
-}
-
 // fn expand(index:i8) -> (i8, i8, i8) {
 //     return (index % 4, (index / 4) % 4, index / 16)
 // }
@@ -282,6 +270,8 @@ impl GameState {
                     break;
                 }
             }
+            // Not right either, I need to check if the for loop ever used the if.
+            panic!("The coordinate ({:?}, {:?}) is full, but couldn't be removed from legal_actions.", x, y);
         }
         for line in structure.points[flat_coordinate as usize].lines.clone() {
             let line_state = LineState::add_ball_functional(self.lines[line as usize], self.current_color);

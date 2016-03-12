@@ -1,3 +1,4 @@
+mod tests;
 
 mod game;
 mod ai;
