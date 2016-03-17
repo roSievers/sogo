@@ -1,5 +1,5 @@
-
 use std::ops::{Not};
+
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum PlayerColor {
@@ -170,34 +170,14 @@ impl GameStructure {
     }
 }
 
+#[derive(Clone)]
 pub struct GameState {
-    pub points : [PointState; 64], // Maybe we want to change this into a Vector.
-    pub lines  : [LineState; 76],
+    pub points : Vec<PointState>, // Maybe we want to change this into a Vector.
+    pub lines  : Vec<LineState>,
     pub current_color : PlayerColor,
     pub victory_state : VictoryState,
     pub age : i8, // how many balls were played?
     pub legal_actions : Vec<Action>,
-}
-
-impl Clone for GameState {
-    fn clone(&self) -> GameState {
-        let mut point_clone = [PointState::Empty; 64];
-        let mut line_clone  = [LineState::Empty; 76];
-        for i in 0..64 {
-            point_clone[i] = self.points[i].clone();
-        }
-        for i in 0..76 {
-            line_clone[i] = self.lines[i].clone();
-        }
-        GameState {
-            points : point_clone,
-            lines  : line_clone,
-            current_color : self.current_color.clone(),
-            victory_state : self.victory_state.clone(),
-            age : self.age.clone(),
-            legal_actions : self.legal_actions.clone(),
-        }
-    }
 }
 
 impl GameState {
@@ -210,8 +190,8 @@ impl GameState {
             }
         }
         GameState {
-            points : [PointState::Empty; 64],
-            lines : [LineState::Empty; 76],
+            points : vec![PointState::Empty; 64],
+            lines : vec![LineState::Empty; 76],
             current_color : PlayerColor::White,
             victory_state : VictoryState::Undecided,
             age : 0,
