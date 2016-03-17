@@ -2,7 +2,7 @@
 // Some example AIs are also contained.
 extern crate rand;
 use self::rand::{thread_rng, Rng};
-//use self::rand::distributions::{IndependentSample, Range};
+use self::rand::distributions::{IndependentSample, Range};
 use game;
 use game::{GameState, GameStructure, PlayerColor, VictoryState, VictoryStats, LineState, Action};
 
@@ -314,7 +314,6 @@ fn monte_carlo_judgement(structure : &GameStructure, state : &GameState, my_colo
     }
 }
 
-/*
 // Monte Carlo Tree search
 // This is fancy, I'll do it later, when I learned about Monte Carlo and
 // about Tree search.
@@ -347,8 +346,8 @@ impl MCNode {
         let children = {
             if state.victory_state == VictoryState::Undecided {
                 let mut children = Vec::new();
-                for point in state.legal_actions {
-                    children.push(LazyMCNode::Unexpanded(Action::new(&point)));
+                for action in &state.legal_actions {
+                    children.push(LazyMCNode::Unexpanded(action.clone()));
                 }
                 MCBranching::Branch(children)
             } else {
@@ -369,7 +368,7 @@ fn random_mc_playout(structure : &GameStructure, node : &mut MCNode) -> VictoryS
     // First, check if we have children.
     match node.children {
         MCBranching::GameOver(victory_state) => victory_state,
-        MCBranching::Branch(mut children) => {
+        MCBranching::Branch(ref mut children) => {
             // Randomly choose a child
             //let mut child = thread_rng().choose(&children).unwrap();
             // OK, here we have a problem with the saveness of Rust.
@@ -380,21 +379,24 @@ fn random_mc_playout(structure : &GameStructure, node : &mut MCNode) -> VictoryS
             // child becomes invalid. (At the end of this match block.)
             let between = Range::new(0, children.len());
             let index = between.ind_sample(&mut thread_rng());
-            let mut child = children[index];
+            let ref mut child = children[index];
             match child {
                 // if this is a unexpanded node, do a random playout, count it and propagate it upwards.
-                LazyMCNode::Unexpanded(action) => {
+                &mut LazyMCNode::Unexpanded(action) => {
                     let mut new_state = node.state.clone();
-                    game::execute_action(structure, &mut new_state, action);
+                    new_state.execute_action(structure, &action);
                     // This is bad, we clone the state twice.
                     // TODO: Define random_playout_ip to speed this up.
-                    random_playout(structure, &mut new_state)
+                    let result = random_playout(structure, &mut new_state);
+                    result
                 }
-                LazyMCNode::Expanded(boxed_node) => {
+                &mut LazyMCNode::Expanded(ref mut boxed_node) => {
+                    // Randomly choose a child to follow.
                     VictoryState::Draw
                 }
             }
+            //VictoryState::Draw
         }
     }
 }
-*/
+//*/
