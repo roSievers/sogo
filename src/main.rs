@@ -4,6 +4,7 @@ mod tests;
 mod game;
 mod ai;
 mod human_ai;
+mod constants;
 use game::{VictoryStats};
 
 #[allow(dead_code)]

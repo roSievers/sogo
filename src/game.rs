@@ -1,5 +1,5 @@
 use std::ops::{Not};
-
+use constants::{LINES};
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum PlayerColor {
@@ -49,21 +49,6 @@ pub enum Action {
 impl Action {
     pub fn new(x : i8, y : i8) -> Action {
         Action::Play {x:x, y:y}
-    }
-}
-
-pub struct Line {
-    points : [Point; 4]
-}
-
-impl Line {
-    // constructor, by convention
-    pub fn new(x:i8, y:i8, z:i8, dx:i8, dy:i8, dz:i8) -> Line {
-        let point1 = Point::new(x, y, z);
-        let point2 = Point::new(x+1*dx, y+1*dy, z+1*dz);
-        let point3 = Point::new(x+2*dx, y+2*dy, z+2*dz);
-        let point4 = Point::new(x+3*dx, y+3*dy, z+3*dz);
-        Line { points : [point1, point2, point3, point4]}
     }
 }
 
@@ -121,7 +106,6 @@ impl VictoryStats {
 // this should be moved to a macro and be created once at compile time.
 pub struct GameStructure {
     pub points : Vec<Point>,
-    pub lines  : Vec<Line>
 }
 
 impl GameStructure {
@@ -137,36 +121,22 @@ impl GameStructure {
         }
 
         // Initialize a vector of all Lines.
-        let mut line_box = Vec::new();
-        for a in 0..4 {
-            for b in 0..4 {
-                line_box.push(Line::new(a, b, 0, 0, 0, 1));
-                line_box.push(Line::new(0, a, b, 1, 0, 0));
-                line_box.push(Line::new(b, 0, a, 0, 1, 0))
+        // And refenence the line ID in the points.
+        for line_id in 0..76 {
+            // rep is a u64 encoding of the line.
+            let mut rep = LINES[line_id];
+            let mut flat = 0;
+            while rep > 0 {
+                // A one indicates that this line has a point at that particular position.
+                if rep % 2 == 1 {
+                    point_box[flat as usize].lines.push(line_id as i8);
+                }
+                rep /= 2;
+                flat += 1;
             }
-            // Diagonals in two spacial directions
-            line_box.push(Line::new(a, 0, 0, 0, 1, 1));
-            line_box.push(Line::new(0, a, 0, 1, 0, 1));
-            line_box.push(Line::new(0, 0, a, 1, 1, 0));
-            line_box.push(Line::new(a, 3, 0, 0,-1, 1));
-            line_box.push(Line::new(0, a, 3, 1, 0,-1));
-            line_box.push(Line::new(3, 0, a,-1, 1, 0));
         }
-        // Diagonals in all three directions at once
-        line_box.push(Line::new(0, 0, 0, 1, 1, 1));
-        line_box.push(Line::new(3, 0, 0,-1, 1, 1));
-        line_box.push(Line::new(3, 3, 0,-1,-1, 1));
-        line_box.push(Line::new(0, 3, 0, 1,-1, 1));
 
-        // Refenence the line ID in the points.
-        let mut i = 0;
-        for line in &line_box {
-            for point in line.points.iter() {
-                point_box[point.flat_coordinate as usize].lines.push(i);
-            }
-            i += 1;
-        }
-        GameStructure { points : point_box, lines : line_box }
+        GameStructure { points : point_box }
     }
 }
 

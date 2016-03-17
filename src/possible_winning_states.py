@@ -140,4 +140,11 @@ def legal_parallelograms():
 print """Use
 > a = exhaust_state_generator(legal_parallelograms)
 > len(a)
-to find the number of legal parallelograms."
+to find the number of legal parallelograms."""
+
+# Now we can use this list of all parallelograms to check an algorithm with
+# generates all the parallelograms in a sensible fashion.
+# Or we just place them in a long list of 1020 entries :P
+
+a = exhaust_state_generator(legal_lines)
+print a.keys()

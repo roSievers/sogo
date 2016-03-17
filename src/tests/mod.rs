@@ -38,5 +38,4 @@ fn game_structure_size() {
         assert_eq!(p.flat_coordinate, i);
         i += 1;
     }
-    assert_eq!(structure.lines.len(), 76);
 }
