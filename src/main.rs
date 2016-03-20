@@ -5,19 +5,21 @@ mod game;
 mod ai;
 mod human_ai;
 mod constants;
-use game::{VictoryStats};
+use game::{VictoryStats, GameStructure};
+use constants::{LINES};
+use std::rc::Rc;
 
 #[allow(dead_code)]
 fn run_all_matches(endurance : Vec<i32>, precision : i32) -> Vec<Vec<(i32, i32, f32)>> {
-    let structure = game::GameStructure::new();
+    let structure = Rc::new(GameStructure::new(&LINES));
     let mut result = Vec::new();
     for i in 0..endurance.len() {
         let mut result_row = Vec::new();
         for j in 0..endurance.len() {
             let mut result_cell = VictoryStats::new();
             println!("Comparing {:?} to {:?}", endurance[i], endurance[j]);
-            let p1 = ai::MonteCarloAI::new(endurance[i]);
-            let p2 = ai::MonteCarloAI::new(endurance[j]);
+            let p1 = ai::MonteCarloAI::new(structure.clone(), endurance[i]);
+            let p2 = ai::MonteCarloAI::new(structure.clone(), endurance[j]);
             for i in 0..precision {
                 println!("    Game {} of {}", i, precision);
                 let state = ai::run_match(&structure, &p1, &p2);
@@ -47,13 +49,13 @@ fn calculate_rank_difference(stats : VictoryStats) -> (i32, i32, f32) {
 fn main() {
     //run_all_matches(vec![1000], 1000);
 
-    let structure = game::GameStructure::new();
-    let p1 = ai::MonteCarloAI::new(1000);
-    //let p2 = ai::MonteCarloAI::new(1000);
-    //let p2 = ai::TreeJudgementAI::new(2);
+    let structure = Rc::new(GameStructure::new(&LINES));
+    //let p1 = ai::MonteCarloAI::new(1000);
+    let p2 = ai::MonteCarloAI::new(structure.clone(), 1000);
+    //let p2 = ai::TreeJudgementAI::new(structure.clone(), 5);
     //let p1 = ai::RandomSogoAI::new();
     //let p1 = ai::TreeJudgementAI::new(4);
-    let p2 = human_ai::HumanPlayer::Active;
+    let p1 = human_ai::HumanPlayer::Active;
     let mut statics = VictoryStats { white : 0, black : 0, draws : 0};
     for i in 0..1 {
         println!("Game {}.", i);

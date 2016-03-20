@@ -2,9 +2,10 @@
 // Some example AIs are also contained.
 extern crate rand;
 use self::rand::{thread_rng, Rng};
-use self::rand::distributions::{IndependentSample, Range};
+//use self::rand::distributions::{IndependentSample, Range};
 use game;
 use game::{GameState, GameStructure, PlayerColor, VictoryState, VictoryStats, LineState, Action};
+use std::rc::Rc;
 
 pub trait SogoAI {
     fn reset_game(&self);
@@ -18,7 +19,7 @@ pub trait SogoAI {
 pub fn run_match<T : SogoAI, U : SogoAI>(structure : &GameStructure, white_player : &T, black_player : &U) -> GameState {
     let mut i = 0;
 
-    let mut state = GameState::new();
+    let mut state = GameState::new(&structure);
     while state.victory_state == VictoryState::Undecided {
         if state.age == 64 {
             state.victory_state = VictoryState::Draw;
@@ -86,7 +87,7 @@ pub fn random_playout_sample(structure : &GameStructure, state : &GameState, num
 
 fn easy_judgement (state : &GameState, my_color : PlayerColor) -> i32 {
     let mut score = 0;
-    for i in 0..76 {
+    for i in 0..state.lines.len() {
         let line = state.lines[i];
         score += match line {
             LineState::Empty  => 0,
@@ -102,14 +103,14 @@ fn easy_judgement (state : &GameState, my_color : PlayerColor) -> i32 {
 
 #[allow(dead_code)]
 pub struct TreeJudgementAI {
-    structure : game::GameStructure,
+    structure : Rc<game::GameStructure>,
     search_depth : i8,
 }
 
 #[allow(dead_code)]
 impl TreeJudgementAI {
-    pub fn new(depth : i8) -> TreeJudgementAI {
-        TreeJudgementAI { structure : game::GameStructure::new(), search_depth : depth }
+    pub fn new(structure : Rc<GameStructure>, depth : i8) -> TreeJudgementAI {
+        TreeJudgementAI { structure : structure, search_depth : depth }
     }
 }
 
@@ -267,13 +268,13 @@ fn max_min(node : &mut Node<MinMaxTagging>) {
 #[allow(dead_code)]
 pub struct MonteCarloAI {
     endurance : i32, // How many random games am I allowed to play each turn?
-    structure : GameStructure,
+    structure : Rc<GameStructure>,
 }
 
 #[allow(dead_code)]
 impl MonteCarloAI {
-    pub fn new(endurance : i32) -> MonteCarloAI {
-        MonteCarloAI{endurance : endurance, structure : GameStructure::new()}
+    pub fn new(structure : Rc<GameStructure>, endurance : i32) -> MonteCarloAI {
+        MonteCarloAI{endurance : endurance, structure : structure}
     }
 }
 
@@ -317,6 +318,8 @@ fn monte_carlo_judgement(structure : &GameStructure, state : &GameState, my_colo
 // Monte Carlo Tree search
 // This is fancy, I'll do it later, when I learned about Monte Carlo and
 // about Tree search.
+
+/*
 
 // This tree structure is slightly more lazy than the Node tree and can expand a node partially.
 struct MCNode {
@@ -399,4 +402,4 @@ fn random_mc_playout(structure : &GameStructure, node : &mut MCNode) -> VictoryS
         }
     }
 }
-//*/
+// */

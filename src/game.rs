@@ -1,5 +1,4 @@
 use std::ops::{Not};
-use constants::{LINES};
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum PlayerColor {
@@ -20,7 +19,7 @@ impl Not for PlayerColor {
 }
 
 #[allow(dead_code)] // Dead code is allowed, because I want x, y, z even if I don't use it.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Point {
     pub x : i8,
     pub y : i8,
@@ -101,15 +100,14 @@ impl VictoryStats {
     }
 }
 
-// TODO: Recomputing this and passing it around gets boring at some point.
-// Once we abstract over several different game structures
-// this should be moved to a macro and be created once at compile time.
+#[derive(Clone)]
 pub struct GameStructure {
     pub points : Vec<Point>,
+    victory_object_count : usize,
 }
 
 impl GameStructure {
-    pub fn new() -> GameStructure {
+    pub fn new(victory_objects : &[u64]) -> GameStructure {
         // Initialize a vector of all Points.
         let mut point_box = Vec::new();
         for z in 0..4 {
@@ -120,11 +118,10 @@ impl GameStructure {
             }
         }
 
-        // Initialize a vector of all Lines.
-        // And refenence the line ID in the points.
-        for line_id in 0..76 {
+        // Refenence the line ID in the points.
+        for line_id in 0..victory_objects.len() {
             // rep is a u64 encoding of the line.
-            let mut rep = LINES[line_id];
+            let mut rep = victory_objects[line_id];
             let mut flat = 0;
             while rep > 0 {
                 // A one indicates that this line has a point at that particular position.
@@ -136,7 +133,7 @@ impl GameStructure {
             }
         }
 
-        GameStructure { points : point_box }
+        GameStructure { points : point_box, victory_object_count : victory_objects.len() }
     }
 }
 
@@ -151,7 +148,7 @@ pub struct GameState {
 }
 
 impl GameState {
-    pub fn new() -> GameState {
+    pub fn new(structure : &GameStructure) -> GameState {
         // The board is empty and all actions are legal
         let mut legal = Vec::new();
         for x in 0..4 {
@@ -161,7 +158,7 @@ impl GameState {
         }
         GameState {
             points : vec![PointState::Empty; 64],
-            lines : vec![LineState::Empty; 76],
+            lines : vec![LineState::Empty; structure.victory_object_count],
             current_color : PlayerColor::White,
             victory_state : VictoryState::Undecided,
             age : 0,
@@ -182,6 +179,7 @@ impl GameState {
     }
 
     // Idea: This could be cached inside each gamestate.
+    // Height at which a new ball would be placed.
     fn z_value(&self, x : i8, y : i8) -> Option<i8> {
         for z in 0..4 {
             if self.points[flatten(x, y, z) as usize] == PointState::Empty {
