@@ -8,25 +8,25 @@ use std::rc::Rc;
 #[test]
 fn match_mc() {
     let structure = Rc::new(GameStructure::new(&LINES));
-    let white_player = MonteCarloAI::new(structure.clone(), 1000);
-    let black_player = MonteCarloAI::new(structure.clone(), 1000);
-    run_match(&structure, &white_player, &black_player);
+    let mut white_player = MonteCarloAI::new(structure.clone(), 1000);
+    let mut black_player = MonteCarloAI::new(structure.clone(), 1000);
+    run_match(&structure, &mut white_player, &mut black_player);
 }
 
 #[test]
 fn match_mc_tree() {
     let structure = Rc::new(GameStructure::new(&LINES));
-    let white_player = MonteCarloAI::new(structure.clone(), 1000);
-    let black_player = TreeJudgementAI::new(structure.clone(), 2);
-    run_match(&structure, &white_player, &black_player);
+    let mut white_player = MonteCarloAI::new(structure.clone(), 1000);
+    let mut black_player = TreeJudgementAI::new(structure.clone(), 2);
+    run_match(&structure, &mut white_player, &mut black_player);
 }
 
 #[test]
 fn match_tree() {
     let structure = Rc::new(GameStructure::new(&LINES));
-    let white_player = TreeJudgementAI::new(structure.clone(), 2);
-    let black_player = TreeJudgementAI::new(structure.clone(), 2);
-    let result = run_match(&structure, &white_player, &black_player);
+    let mut white_player = TreeJudgementAI::new(structure.clone(), 2);
+    let mut black_player = TreeJudgementAI::new(structure.clone(), 2);
+    let result = run_match(&structure, &mut white_player, &mut black_player);
     // As the TreeJudgementAI is deterministic, the same player wins all the time.
     assert_eq!(result.victory_state, VictoryState::Win(PlayerColor::Black));
 }

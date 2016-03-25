@@ -48,11 +48,11 @@ pub fn ask_for_move() -> Action {
 }
 
 impl SogoAI for HumanPlayer {
-    fn reset_game(&self) {}
-    fn register_opponent_action(&self, action : &Action) {
+    fn reset_game(&mut self) {}
+    fn register_opponent_action(&mut self, action : &Action) {
         println!("Enemy action was: {:?}", action);
     }
-    fn decide_action(&self, state : &game::GameState) -> Action {
+    fn decide_action(&mut self, state : &game::GameState) -> Action {
         print_gamestate(state);
         ask_for_move()
     }

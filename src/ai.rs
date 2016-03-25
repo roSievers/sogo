@@ -8,15 +8,15 @@ use game::{GameState, GameStructure, PlayerColor, VictoryState, VictoryStats, Li
 use std::rc::Rc;
 
 pub trait SogoAI {
-    fn reset_game(&self);
+    fn reset_game(&mut self);
     // Some information may be preserved after an opponent's turn.
     // Tree based algorithms may carry over part of the search tree.
-    fn register_opponent_action(&self, &Action);
-    fn decide_action(&self, state : &GameState) -> Action;
+    fn register_opponent_action(&mut self, &Action);
+    fn decide_action(&mut self, state : &GameState) -> Action;
         // An imutable reference to the game_state is passed for convenience only.
 }
 
-pub fn run_match<T : SogoAI, U : SogoAI>(structure : &GameStructure, white_player : &T, black_player : &U) -> GameState {
+pub fn run_match<T : SogoAI, U : SogoAI>(structure : &GameStructure, white_player : &mut T, black_player : &mut U) -> GameState {
     let mut i = 0;
 
     let mut state = GameState::new(&structure);
@@ -48,9 +48,9 @@ impl RandomSogoAI {
 }
 
 impl SogoAI for RandomSogoAI {
-    fn reset_game(&self) { }
-    fn register_opponent_action(&self, _ : &Action) {}
-    fn decide_action(&self, state : &GameState) -> Action {
+    fn reset_game(&mut self) { }
+    fn register_opponent_action(&mut self, _ : &Action) {}
+    fn decide_action(&mut self, state : &GameState) -> Action {
         thread_rng().choose(&state.legal_actions)
             .map_or(Action::Surrender, |&a| a.clone())
         // Rust also implements a faster random generator, but it needs to be stored outside of this
@@ -115,9 +115,9 @@ impl TreeJudgementAI {
 }
 
 impl SogoAI for TreeJudgementAI {
-    fn reset_game(&self) {}
-    fn register_opponent_action(&self, _ : &Action) {}
-    fn decide_action(&self, state : &GameState) -> Action {
+    fn reset_game(&mut self) {}
+    fn register_opponent_action(&mut self, _ : &Action) {}
+    fn decide_action(&mut self, state : &GameState) -> Action {
         let my_color = state.current_color;
         // Create a tree from the current gamestate.
         let mut tree : Node<MinMaxTagging> = Node::new(state.clone(), None);
@@ -279,11 +279,11 @@ impl MonteCarloAI {
 }
 
 impl SogoAI for MonteCarloAI {
-    fn reset_game(&self) {}
+    fn reset_game(&mut self) {}
     // Some information may be preserved after an opponent's turn.
     // Tree based algorithms may carry over part of the search tree.
-    fn register_opponent_action(&self, _ : &Action) {}
-    fn decide_action(&self, state : &GameState) -> Action {
+    fn register_opponent_action(&mut self, _ : &Action) {}
+    fn decide_action(&mut self, state : &GameState) -> Action {
         let my_color = state.current_color;
         let endurance_per_action = self.endurance / (state.legal_actions.len() as i32);
         // Create a tree from the current gamestate.

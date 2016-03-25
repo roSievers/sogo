@@ -19,11 +19,11 @@ fn run_all_matches(endurance : Vec<i32>, precision : i32) -> Vec<Vec<(i32, i32, 
         for j in 0..endurance.len() {
             let mut result_cell = VictoryStats::new();
             println!("Comparing {:?} to {:?}", endurance[i], endurance[j]);
-            let p1 = ai::MonteCarloAI::new(structure.clone(), endurance[i]);
-            let p2 = ai::MonteCarloAI::new(structure.clone(), endurance[j]);
+            let mut p1 = ai::MonteCarloAI::new(structure.clone(), endurance[i]);
+            let mut p2 = ai::MonteCarloAI::new(structure.clone(), endurance[j]);
             for i in 0..precision {
                 println!("    Game {} of {}", i, precision);
-                let state = ai::run_match(&structure, &p1, &p2);
+                let state = ai::run_match(&structure, &mut p1, &mut p2);
                 match state.victory_state {
                     game::VictoryState::Win(game::PlayerColor::White) => result_cell.white += 1,
                     game::VictoryState::Win(game::PlayerColor::Black) => result_cell.black += 1,
@@ -52,15 +52,15 @@ fn main() {
 
     let structure = Rc::new(GameStructure::new(&PARALLELOGRAMS));
     //let p1 = ai::MonteCarloAI::new(1000);
-    let p1 = ai::MonteCarloAI::new(structure.clone(), 10000);
+    let mut p1 = ai::MonteCarloAI::new(structure.clone(), 10000);
     //let p2 = ai::TreeJudgementAI::new(structure.clone(), 3);
     //let p1 = ai::RandomSogoAI::new();
     //let p1 = ai::TreeJudgementAI::new(4);
-    let p2 = human_ai::HumanPlayer::Active;
+    let mut p2 = human_ai::HumanPlayer::Active;
     let mut statics = VictoryStats { white : 0, black : 0, draws : 0};
     for i in 0..1 {
         println!("Game {}.", i);
-        let state = ai::run_match(&structure, &p1, &p2);
+        let state = ai::run_match(&structure, &mut p1, &mut p2);
         match state.victory_state {
             game::VictoryState::Win(game::PlayerColor::White) => statics.white += 1,
             game::VictoryState::Win(game::PlayerColor::Black) => statics.black += 1,
