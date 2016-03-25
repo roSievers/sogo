@@ -18,7 +18,7 @@ pub fn print_gamestate(state : &GameState) {
             line = line + " |";
             for x in 0..4 {
                 let flat_coordinate = game::flatten(x, y, z);
-                line = line + match state.points[flat_coordinate as usize] {
+                line = line + match state.points[flat_coordinate] {
                     PointState::Empty => ".",
                     PointState::Piece(PlayerColor::White) => "X",
                     PointState::Piece(PlayerColor::Black) => "O"

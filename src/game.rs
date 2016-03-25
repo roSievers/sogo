@@ -19,25 +19,35 @@ impl Not for PlayerColor {
     }
 }
 
-#[allow(dead_code)] // Dead code is allowed, because I want x, y, z even if I don't use it.
 #[derive(Debug, Clone)]
 pub struct Point {
-    pub x : i8,
-    pub y : i8,
-    pub z : i8,
-    pub flat_coordinate : i8,
-    pub lines : Vec<i16> // This vector stores the IDs of all lines through it.
+    pub flat_coordinate : usize,
+    pub lines : Vec<usize> // This vector stores the IDs of all lines through it.
 }
 
 impl Point {
     // constructor, by convention
     pub fn new(x:i8, y:i8, z:i8) -> Point {
-        Point {x:x, y:y, z:z, flat_coordinate:flatten(x, y, z), lines:Vec::new()} //, lines : Vec::new()}
+        Point {flat_coordinate:flatten(x, y, z), lines:Vec::new()} //, lines : Vec::new()}
+    }
+
+    // Allow the coordinate getters to stay around for debugging purposes.
+    #[allow(dead_code)]
+    pub fn get_x(&self) -> usize {
+        self.flat_coordinate % 4
+    }
+    #[allow(dead_code)]
+    pub fn get_y(&self) -> usize {
+        (self.flat_coordinate / 4) % 4
+    }
+    #[allow(dead_code)]
+    pub fn get_z(&self) -> usize {
+        self.flat_coordinate / 16
     }
 }
 
-pub fn flatten(x:i8, y:i8, z:i8) -> i8 {
-    return x + 4*y + 16*z
+pub fn flatten(x:i8, y:i8, z:i8) -> usize {
+    return (x + 4*y + 16*z) as usize
 }
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
@@ -133,7 +143,7 @@ impl GameStructure {
             while rep > 0 {
                 // A one indicates that this line has a point at that particular position.
                 if rep % 2 == 1 {
-                    point_box[flat as usize].lines.push(line_id as i16);
+                    point_box[flat].lines.push(line_id);
                 }
                 rep /= 2;
                 flat += 1;
@@ -193,7 +203,7 @@ impl GameState {
     // Height at which a new ball would be placed.
     fn z_value(&self, x : i8, y : i8) -> Option<i8> {
         for z in 0..4 {
-            if self.points[flatten(x, y, z) as usize] == PointState::Empty {
+            if self.points[flatten(x, y, z)] == PointState::Empty {
                 return Some(z)
             }
         }
@@ -207,7 +217,7 @@ impl GameState {
             None => panic!("Added a ball at ({}, {}), which is already full.", x, y)
         };
         // Place a colored piece at the coordinate
-        self.points[flat_coordinate as usize] = PointState::Piece(self.current_color);
+        self.points[flat_coordinate] = PointState::Piece(self.current_color);
         // Update the legal actions, if the z-coordinate is 3
         // I make use of the fact that the z coordinate is occupying the top two bits.
         if flat_coordinate >= 4*4*3 {
@@ -222,14 +232,14 @@ impl GameState {
                 }
             }
         }
-        for line in structure.points[flat_coordinate as usize].lines.clone() {
+        for line in structure.points[flat_coordinate].lines.clone() {
             //println!("{:?}", usize::max_value());
-            let line_state = LineState::add_ball_functional(self.lines[line as usize], self.current_color, structure.victory_object_size);
+            let line_state = LineState::add_ball_functional(self.lines[line], self.current_color, structure.victory_object_size);
             match line_state {
                 LineState::Win(color) => self.victory_state = VictoryState::Win(color),
                 _ => (),
             }
-            self.lines[line as usize] = line_state;
+            self.lines[line] = line_state;
         }
         self.age += 1;
         if self.age == 64 && self.victory_state == VictoryState::Undecided {
