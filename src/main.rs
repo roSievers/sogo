@@ -5,13 +5,14 @@ mod game;
 mod ai;
 mod human_ai;
 mod constants;
+mod helpers;
 use game::{VictoryStats, GameStructure};
-use constants::{LINES};
+use constants::{LINES, PARALLELOGRAMS};
 use std::rc::Rc;
 
 #[allow(dead_code)]
 fn run_all_matches(endurance : Vec<i32>, precision : i32) -> Vec<Vec<(i32, i32, f32)>> {
-    let structure = Rc::new(GameStructure::new(&LINES));
+    let structure = Rc::new(GameStructure::new(&PARALLELOGRAMS));
     let mut result = Vec::new();
     for i in 0..endurance.len() {
         let mut result_row = Vec::new();
@@ -47,15 +48,15 @@ fn calculate_rank_difference(stats : VictoryStats) -> (i32, i32, f32) {
 
 
 fn main() {
-    //run_all_matches(vec![1000], 1000);
+    //run_all_matches(vec![500, 1000, 1500], 10);
 
-    let structure = Rc::new(GameStructure::new(&LINES));
+    let structure = Rc::new(GameStructure::new(&PARALLELOGRAMS));
     //let p1 = ai::MonteCarloAI::new(1000);
-    let p2 = ai::MonteCarloAI::new(structure.clone(), 1000);
-    //let p2 = ai::TreeJudgementAI::new(structure.clone(), 5);
+    let p1 = ai::MonteCarloAI::new(structure.clone(), 10000);
+    //let p2 = ai::TreeJudgementAI::new(structure.clone(), 3);
     //let p1 = ai::RandomSogoAI::new();
     //let p1 = ai::TreeJudgementAI::new(4);
-    let p1 = human_ai::HumanPlayer::Active;
+    let p2 = human_ai::HumanPlayer::Active;
     let mut statics = VictoryStats { white : 0, black : 0, draws : 0};
     for i in 0..1 {
         println!("Game {}.", i);

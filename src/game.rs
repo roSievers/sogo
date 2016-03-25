@@ -1,4 +1,5 @@
 use std::ops::{Not};
+use helpers::EqualityVerifier;
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum PlayerColor {
@@ -25,7 +26,7 @@ pub struct Point {
     pub y : i8,
     pub z : i8,
     pub flat_coordinate : i8,
-    pub lines : Vec<i8> // This vector stores the IDs of all lines through it.
+    pub lines : Vec<i16> // This vector stores the IDs of all lines through it.
 }
 
 impl Point {
@@ -66,12 +67,12 @@ pub enum LineState {
 }
 
 impl LineState {
-    fn add_ball_functional(line_state : LineState, new_color : PlayerColor) -> LineState {
+    fn add_ball_functional(line_state : LineState, new_color : PlayerColor, max_size : i8) -> LineState {
         match line_state {
             LineState::Empty => LineState::Pure { color : new_color, count : 1},
             LineState::Pure { color : current_color, count : old_count} =>
                 if current_color != new_color { LineState::Mixed } else {
-                    if old_count == 3 {LineState::Win(current_color)}
+                    if old_count == max_size - 1 {LineState::Win(current_color)}
                     else {LineState::Pure {color : current_color, count : old_count+1}}
                 },
             LineState::Mixed => LineState::Mixed,
@@ -104,6 +105,8 @@ impl VictoryStats {
 pub struct GameStructure {
     pub points : Vec<Point>,
     victory_object_count : usize,
+    // All victory objects need to be of the same size. This is an implementation restriction.
+    victory_object_size : i8,
 }
 
 impl GameStructure {
@@ -118,22 +121,30 @@ impl GameStructure {
             }
         }
 
+        // Make sure the victory object count is the same for each object.
+        let mut object_count = EqualityVerifier::new();
+
         // Refenence the line ID in the points.
         for line_id in 0..victory_objects.len() {
             // rep is a u64 encoding of the line.
             let mut rep = victory_objects[line_id];
+            object_count.update(rep.count_ones() as i8);
             let mut flat = 0;
             while rep > 0 {
                 // A one indicates that this line has a point at that particular position.
                 if rep % 2 == 1 {
-                    point_box[flat as usize].lines.push(line_id as i8);
+                    point_box[flat as usize].lines.push(line_id as i16);
                 }
                 rep /= 2;
                 flat += 1;
             }
         }
 
-        GameStructure { points : point_box, victory_object_count : victory_objects.len() }
+        GameStructure {
+            points : point_box,
+            victory_object_count : victory_objects.len(),
+            victory_object_size : object_count.unwrap(),
+        }
     }
 }
 
@@ -212,7 +223,8 @@ impl GameState {
             }
         }
         for line in structure.points[flat_coordinate as usize].lines.clone() {
-            let line_state = LineState::add_ball_functional(self.lines[line as usize], self.current_color);
+            //println!("{:?}", usize::max_value());
+            let line_state = LineState::add_ball_functional(self.lines[line as usize], self.current_color, structure.victory_object_size);
             match line_state {
                 LineState::Win(color) => self.victory_state = VictoryState::Win(color),
                 _ => (),
