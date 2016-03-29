@@ -7,7 +7,7 @@ mod human_ai;
 mod constants;
 mod helpers;
 use game::{VictoryStats, GameStructure};
-use constants::{LINES, PARALLELOGRAMS};
+use constants::{LINES, PARALLELOGRAMS, PLUSSES};
 use std::rc::Rc;
 
 #[allow(dead_code)]
@@ -48,17 +48,24 @@ fn calculate_rank_difference(stats : VictoryStats) -> (i32, i32, f32) {
 
 
 fn main() {
+    let structure = Rc::new(GameStructure::new(&PLUSSES));
+
+    /*let mut tree = ai::MCTreeAI::new(structure.clone(), 1000);
+    for _ in 0..10000 {
+        tree.simulate_playout();
+    }
+    tree.root.print_some_info();*/
+
     //run_all_matches(vec![500, 1000, 1500], 10);
 
-    let structure = Rc::new(GameStructure::new(&PARALLELOGRAMS));
-    //let p1 = ai::MonteCarloAI::new(1000);
+    //let mut p1 = ai::MCTreeAI::new(structure.clone(), 10000);
     let mut p1 = ai::MonteCarloAI::new(structure.clone(), 10000);
     //let p2 = ai::TreeJudgementAI::new(structure.clone(), 3);
     //let p1 = ai::RandomSogoAI::new();
     //let p1 = ai::TreeJudgementAI::new(4);
     let mut p2 = human_ai::HumanPlayer::Active;
     let mut statics = VictoryStats { white : 0, black : 0, draws : 0};
-    for i in 0..1 {
+    for i in 0..20 {
         println!("Game {}.", i);
         let state = ai::run_match(&structure, &mut p1, &mut p2);
         match state.victory_state {

@@ -11,6 +11,12 @@
 def vector_addition(v1, v2):
     return (v1[0]+v2[0], v1[1]+v2[1], v1[2]+v2[2])
 
+def dot_product(v1, v2):
+    return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2]
+
+def minus(v):
+    return (-v[0], -v[1], -v[2])
+
 # Generally I want to keep this script using a generator style.
 # There generators are passed around as a function returning a generator.
 # This way I can create a new version of the generator whenever I want.
@@ -146,5 +152,35 @@ to find the number of legal parallelograms."""
 # generates all the parallelograms in a sensible fashion.
 # Or we just place them in a long list of 1020 entries :P
 
-a = exhaust_state_generator(legal_lines)
+# a = exhaust_state_generator(legal_lines)
+# print a.keys()
+
+# Next up, the "plus shape".
+
+def all_plusses():
+    for p in any_point():
+        for v in any_direction():
+            for w in any_direction():
+                if dot_product(v, w) == 0:
+                    def closure():
+                        yield p
+                        yield vector_addition(p, v)
+                        yield vector_addition(p, w)
+                        yield vector_addition(p, minus(v))
+                        yield vector_addition(p, minus(w))
+                    yield closure
+
+def legal_plusses():
+    for sub_g in all_plusses():
+        victory_state = gather_points(sub_g)
+        #print victory_state
+        if not check_bounding_box(victory_state):
+            continue
+        yield victory_state
+
+def decode(integer):
+    for i in xrange(64):
+        print i % 4, (i/4) %4, i/16, (integer / (2**i)) % 2
+
+a = exhaust_state_generator(legal_plusses)
 print a.keys()
