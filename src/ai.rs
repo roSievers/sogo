@@ -1,11 +1,12 @@
 // This file contains basic definitions for AIs as well as helper function to build them.
 // Some example AIs are also contained.
 extern crate rand;
-use self::rand::{thread_rng, Rng};
+use self::rand::{thread_rng, Rng, Rand};
 //use self::rand::distributions::{IndependentSample, Range};
 use game;
 use game::{GameState, GameStructure, PlayerColor, VictoryState, VictoryStats, LineState, Action};
 use std::rc::Rc;
+use helpers::upper_bound_index;
 
 pub trait SogoAI {
     fn reset_game(&mut self);
@@ -16,7 +17,9 @@ pub trait SogoAI {
         // An imutable reference to the game_state is passed for convenience only.
 }
 
-pub fn run_match<T : SogoAI, U : SogoAI>(structure : &GameStructure, white_player : &mut T, black_player : &mut U) -> GameState {
+pub fn run_match<T : SogoAI, U : SogoAI>(
+        structure : &GameStructure, white_player : &mut T, black_player : &mut U)
+        -> GameState {
     let mut i = 0;
 
     let mut state = GameState::new(&structure);
@@ -312,6 +315,188 @@ fn monte_carlo_judgement(structure : &GameStructure, state : &GameState, my_colo
         return stats.white - stats.black;
     } else {
         return stats.black - stats.white;
+    }
+}
+
+#[derive(Debug)]
+pub struct MCNode {
+    children : Vec<MCPair>,
+    // The victories are from the perspective of the currently active player.
+    // This makes it easier to choose a move but this alternation has to be woven into
+    // the backpropagation of the victory information.
+
+    // We want to use floats instead of integers, because
+    //  a) they are used in float computations most of the time and
+    //  b) draws should count as 0.5 victories.
+    // But float can not implement Eq, so we need to implement Eq ourself.
+    victories : f32,
+    total : i32,
+}
+
+impl PartialEq<MCNode> for MCNode {
+    fn eq(&self, other : &MCNode) -> bool {
+        (self.children == other.children) &&
+        ((self.victories - other.victories).abs() < 0.4) &&
+        (self.total == other.total)
+    }
+}
+
+impl Eq for MCNode {
+    fn assert_receiver_is_total_eq(&self) {}
+}
+
+#[derive(Debug, Eq, PartialEq)]
+struct MCPair {
+    action : Action,
+    node : Option<MCNode>,
+}
+
+#[allow(dead_code)]
+impl MCNode {
+    pub fn new(state : &GameState) -> MCNode {
+        let mut children = Vec::new();
+        for action in &state.legal_actions {
+            children.push(MCPair { action : action.clone(), node : None } )
+        }
+        MCNode { children : children, victories : 0.0, total : 0}
+    }
+    fn random_child_index(&self, total : i32) -> usize {
+        let mut priorities = Vec::new();
+        let mut total_priority : f32 = 0.0;
+        for index in 0..self.children.len() {
+            let node = &self.children[index].node;
+            let priority : f32 = match node {
+                &None => 2.0, // This is arbitrary right now.
+                &Some(ref node_i) => node_i.value(total),
+            };
+            total_priority += priority;
+            priorities.push(total_priority);
+        }
+        let random_position = f32::rand(&mut thread_rng()) * total_priority;
+        return upper_bound_index(&priorities, random_position);
+    }
+    fn value(&self, total : i32) -> f32 {
+        self.victories / self.total as f32 + 1.415 * ((total as f32).ln() / self.total as f32).sqrt()
+    }
+    // The victory state is returned as a f32 with 0, 0.5, 1 representing loss, draw and victory.
+    pub fn random_playout(&mut self, structure : &GameStructure, mut state : GameState, total : i32) -> f32 {
+        // First we choose a random child to continue.
+        let my_color = state.current_color;
+        let child_index = self.random_child_index(total);
+        let pair = &mut self.children[child_index];
+        state.execute_action(structure, &pair.action);
+        let result = match pair.node {
+            None => {
+                let mut node = MCNode::new(&state);
+                // We reached a new leaf. Do one random playout from this position.
+                // TODO: This would also benefit from random_playout_ip
+                let inner_result = random_playout(structure, &state).as_float(my_color);
+                node.total = 1;
+                node.victories = inner_result; // 0 + inner_result
+                pair.node = Some(node);
+
+                1.0 - inner_result
+            },
+            Some(ref mut node) => {
+                // Recurse into the already existing child.
+                1.0 - node.random_playout(structure, state, total)
+            }
+        };
+        self.victories += result;
+        self.total += 1;
+        return result;
+    }
+    pub fn print_some_info(&self) {
+        println!("There was a total of {} playouts with {} vitories.", self.total, self.victories);
+
+        for index in 0..self.children.len() {
+            let node = &self.children[index].node;
+            match node {
+                &None => {println!("Move {} was never done", index);}
+                &Some(ref node_i) => {
+                    let priority = node_i.value(self.total);
+                    println!("Move {} was won {} out of {} times and has a priority of {}.",
+                        index, node_i.victories, node_i.total, priority);
+                },
+            };
+        };
+    }
+    pub fn get_best_action(&self) -> Action {
+        let mut best_action = Action::Surrender;
+        let mut largest_total = 0;
+        for index in 0..self.children.len() {
+            match self.children[index].node {
+                None => {},
+                Some(ref node) => {
+                    let total = node.total;
+                    if total > largest_total {
+                        largest_total = total;
+                        best_action = self.children[index].action;
+                    }
+                }
+            }
+        }
+        return best_action;
+    }
+}
+
+pub struct MCTreeAI {
+    structure : Rc<GameStructure>,
+    endurance : i32,
+    state : GameState,
+    pub root : MCNode,
+}
+
+impl MCTreeAI {
+    pub fn new(structure : Rc<GameStructure>, endurance : i32) -> MCTreeAI {
+        let state = GameState::new(&structure);
+        let root = MCNode::new(&state);
+        MCTreeAI {
+            structure : structure,
+            endurance : endurance,
+            state : state,
+            root : root,
+        }
+    }
+    pub fn simulate_playout(&mut self) {
+        let total = self.root.total;
+        self.root.random_playout(&self.structure, self.state.clone(), total);
+    }
+    fn change_root(&mut self, action : &Action) {
+        // The state is updated and the tree is followed downwards.
+        // All other pathes are destroyed.
+        self.state.execute_action(&self.structure, action);
+        let mut new_root = None;
+        while let Some(pair) = self.root.children.pop() {
+            if pair.action == *action {
+                new_root = pair.node;
+            }
+        }
+        self.root = match new_root {
+            None        => MCNode::new(&self.state),
+            Some(node)  => node,
+        };
+    }
+}
+
+impl SogoAI for MCTreeAI {
+    fn reset_game(&mut self) {
+        self.state = GameState::new(&self.structure);
+        self.root = MCNode::new(&self.state);
+    }
+    // Some information may be preserved after an opponent's turn.
+    // Tree based algorithms may carry over part of the search tree.
+    fn register_opponent_action(&mut self, action : &Action) {
+        self.change_root(action);
+    }
+    fn decide_action(&mut self, _ : &GameState) -> Action {
+        for _ in 0..self.endurance {
+            self.simulate_playout();
+        }
+        //self.root.print_some_info();
+        let action = self.root.get_best_action();
+        self.change_root(&action);
+        return action;
     }
 }
 

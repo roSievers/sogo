@@ -98,6 +98,16 @@ pub enum VictoryState {
     Draw
 }
 
+impl VictoryState {
+    pub fn as_float(&self, perspective : PlayerColor) -> f32 {
+        match *self {
+            VictoryState::Undecided => 0.5,
+            VictoryState::Draw => 0.5,
+            VictoryState::Win(color) => if color == perspective {1.0} else {0.0}
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct VictoryStats {
     pub white : i32,
