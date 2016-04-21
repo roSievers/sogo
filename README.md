@@ -25,3 +25,6 @@ To get a better performance, compile and run with
     > ./target/release/sogo
 
 Builds are checked automatically for each commit and pull request.
+
+# Code Quality [![Clippy Linting Result](https://clippy.bashy.io/github/rosievers/sogo/master/badge.svg)](https://clippy.bashy.io/github/rosievers/sogo/master/log)
+As I am learning Rust on the go, the quality is expected to be low. There are a few tests but the overall coverage is still awful. I'm considering using the Clippy linter to slightly improve code quality.
