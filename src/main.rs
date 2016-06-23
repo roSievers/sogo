@@ -8,6 +8,7 @@ mod constants;
 mod helpers;
 mod general_analysis;
 use game::{VictoryStats, GameStructure};
+use ai::{SogoAI};
 use constants::{LINES, PARALLELOGRAMS, PLUSSES};
 use std::rc::Rc;
 
@@ -128,6 +129,9 @@ fn main() {
     let mut current_placement_candidate = None;
     let mut placement_hint : Option<SceneNode> = None;
 
+    let mut p2 = ai::TreeJudgementAI::new(structure.clone(), 3);
+    // ai::MonteCarloAI::new(structure.clone(), 1000);
+
     while window.render_with_camera(&mut camera) {
         for event in window.events().iter() {
             match event.value {
@@ -158,6 +162,14 @@ fn main() {
                                 let action = game::Action::new(x_value as i8, z_value as i8);
                                 state.execute_action(&structure, &action);
                                 history.add(action, new_piece);
+
+                                // Ask the enemy AI to move
+                                let enemy_action = p2.decide_action(&state);
+                                let (x, z) = enemy_action.unwrap();
+                                let height = state.z_value(x, z).unwrap();
+                                let new_piece = add_piece(window.scene_mut(), x as i32, height as i32, z as i32, state.current_color);
+                                state.execute_action(&structure, &enemy_action);
+                                history.add(enemy_action, new_piece);
                             },
                             None => {},
                         }

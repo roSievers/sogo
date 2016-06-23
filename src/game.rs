@@ -68,6 +68,12 @@ impl Action {
     pub fn flat(flat_coordinate : i8) -> Action {
         Action::new(flat_coordinate % 4, flat_coordinate / 4)
     }
+    pub fn unwrap(&self) -> (i8, i8) {
+        match self {
+            &Action::Play {x : x, y : y} => (x, y),
+            _ => panic!("Unwrapping the Action failed.")
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
