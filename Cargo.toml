@@ -9,4 +9,5 @@ nalgebra =  "0.8.2"
 glfw = "0.2.*"
 
 [dependencies.kiss3d]
-path = "../rust/kiss-fork/kiss3d/"
+# path = "../kiss-fork/kiss3d/"
+git = "https://github.com/roSievers/kiss3d"
