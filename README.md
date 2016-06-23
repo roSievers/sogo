@@ -4,9 +4,9 @@ We plan to implement a version where you try to score "Six in a parallelogram" i
 
 # UI
 
-Currently the UI for human players is a very simple command line output and
-hexadecimal input to place a ball. It would be nice to have a propper 3D output
-at some point, [Piston Library](http://www.piston.rs/) seems to be the tool for the job.
+The 3D interface for human players is written using [Kiss3D](https://github.com/sebcrozet/kiss3d).
+I'm using my [personal fork](https://github.com/roSievers/kiss3d) which might be ahead and incompatible.
+For development I sometimes switch to a local version which might break builds.
 
 # Building [![Build Status](https://travis-ci.org/roSievers/sogo.svg?branch=master)](https://travis-ci.org/roSievers/sogo)
 
