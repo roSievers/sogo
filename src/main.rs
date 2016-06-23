@@ -6,7 +6,7 @@ mod ai;
 mod human_ai;
 mod constants;
 mod helpers;
-mod general_analysis;
+// mod general_analysis;
 use game::{VictoryStats, GameStructure};
 use ai::{SogoAI};
 use constants::{LINES, PARALLELOGRAMS, PLUSSES};
