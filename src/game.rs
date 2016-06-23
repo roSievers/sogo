@@ -1,6 +1,11 @@
 use std::ops::{Not};
 use helpers::EqualityVerifier;
 
+// The two dimensional position is a number between 0 and 15,
+// the three dimensional position is a number between 0 and 63.
+// Both fit into a i8.
+pub type Position = i8;
+
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum PlayerColor {
     White,
@@ -59,6 +64,9 @@ pub enum Action {
 impl Action {
     pub fn new(x : i8, y : i8) -> Action {
         Action::Play {x:x, y:y}
+    }
+    pub fn flat(flat_coordinate : i8) -> Action {
+        Action::new(flat_coordinate % 4, flat_coordinate / 4)
     }
 }
 
@@ -211,7 +219,7 @@ impl GameState {
 
     // Idea: This could be cached inside each gamestate.
     // Height at which a new ball would be placed.
-    fn z_value(&self, x : i8, y : i8) -> Option<i8> {
+    pub fn z_value(&self, x : i8, y : i8) -> Option<i8> {
         for z in 0..4 {
             if self.points[flatten(x, y, z)] == PointState::Empty {
                 return Some(z)

@@ -5,3 +5,8 @@ authors = ["Rolf Sievers <rolf.sievers@posteo.de>"]
 
 [dependencies]
 rand = "*"
+nalgebra =  "0.8.2"
+glfw = "0.2.*"
+
+[dependencies.kiss3d]
+path = "../rust/kiss-fork/kiss3d/"
