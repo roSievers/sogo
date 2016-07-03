@@ -1,15 +1,13 @@
 
 use game::{GameStructure};
 use game;
-use ai::{SogoAI, TreeJudgementAI};
-use constants::{LINES, PARALLELOGRAMS, PLUSSES};
+use thread_synchronisation::{CoreEvent, UiEvent};
+use constants::{LINES};//, PARALLELOGRAMS, PLUSSES};
 use std::rc::Rc;
-
-extern crate kiss3d;
-extern crate glfw;
-extern crate nalgebra as na;
+use std::sync::mpsc::{Sender, Receiver};
 
 use na::{Vector3, Point3, Point2};
+use glfw;
 use glfw::{Action, MouseButton, WindowEvent, Key};
 use kiss3d::window::Window;
 use kiss3d::light::Light;
@@ -22,6 +20,11 @@ const BALL_DIAMMETER : f32 = 0.6;
 const PLATE_HEIGHT : f32 = 0.4;
 const ROD_LENGTH : f32 = 3.6; // In units of pieces.
 
+enum UiState {
+    WaitingForPlayerMove,
+    WaitingForAiMove,
+    GameOver,
+}
 
 /// Calculates the center of the piece in virtual 3D coordinates.
 fn piece_position(x: i32, y: i32, z: i32) -> Vector3<f32> {
@@ -112,7 +115,7 @@ fn placement_coordinate(window : &Window, camera : &ArcBall, cursor_position : (
 }
 
 
-pub fn run_ui() {
+pub fn run_ui(core_sender : Sender<CoreEvent>, ui_receiver : Receiver<UiEvent>) {
     let structure = Rc::new(GameStructure::new(&LINES));
     let mut state = GameState::new(&structure);
     let mut history = ActionHistory::new();
@@ -126,10 +129,22 @@ pub fn run_ui() {
     let mut current_placement_candidate = None;
     let mut placement_hint : Option<SceneNode> = None;
 
-    let mut p2 = TreeJudgementAI::new(structure.clone(), 3);
-    // ai::MonteCarloAI::new(structure.clone(), 1000);
-
     while window.render_with_camera(&mut camera) {
+        // Read the inter thread communication channel
+        while let Ok(event) = ui_receiver.try_recv() {
+            match event {
+                UiEvent::RenderAction { action, color } => {
+                    let (x, z) = action.unwrap();
+                    let height = state.z_value(x, z).unwrap();
+                    let new_piece = add_piece(window.scene_mut(), x as i32, height as i32, z as i32, color);
+                    state.execute_action(&structure, &action);
+                    history.add(action, new_piece);
+                }
+                remainder => println!("Unhandled thread event in UI: {:?}.", remainder),
+            }
+        }
+
+        // Read the Kiss3D events.
         for event in window.events().iter() {
             match event.value {
                 WindowEvent::CursorPos(x, y) => {
@@ -142,7 +157,7 @@ pub fn run_ui() {
                         }
                         // Create new placement hint object, if applicable.
                         if let Some((x, y)) = new_placement_candidate {
-                            if state.z_value(x as i8, y as i8) != None {
+                            if state.z_value(x as i8, y as i8).is_some() {
                                 placement_hint = Some(add_hint(window.scene_mut(), x, y, state.current_color));
                             }
                         }
@@ -151,24 +166,10 @@ pub fn run_ui() {
                 },
                 WindowEvent::MouseButton(MouseButton::Button1, Action::Release, _) => {
                     if let Some((x_value, z_value)) = current_placement_candidate {
-                        let height = state.z_value(x_value as i8, z_value as i8);
-                        match height {
-                            Some(y_value) => {
-                                // Add a new piece to the board.
-                                let new_piece = add_piece(window.scene_mut(), x_value, y_value as i32, z_value, state.current_color);
-                                let action = game::Action::new(x_value as i8, z_value as i8);
-                                state.execute_action(&structure, &action);
-                                history.add(action, new_piece);
-
-                                // Ask the enemy AI to move
-                                let enemy_action = p2.decide_action(&state);
-                                let (x, z) = enemy_action.unwrap();
-                                let height = state.z_value(x, z).unwrap();
-                                let new_piece = add_piece(window.scene_mut(), x as i32, height as i32, z as i32, state.current_color);
-                                state.execute_action(&structure, &enemy_action);
-                                history.add(enemy_action, new_piece);
-                            },
-                            None => {},
+                        // Is placing a piece allowed?
+                        if state.z_value(x_value as i8, z_value as i8).is_some() {
+                            let action = game::Action::new(x_value as i8, z_value as i8);
+                            core_sender.send(CoreEvent::Action{action : action, color : state.current_color}).unwrap();
                         }
                     }
                 },
@@ -184,6 +185,7 @@ pub fn run_ui() {
             }
         }
     }
+    core_sender.send(CoreEvent::Halt).unwrap();
 }
 
 

@@ -8,106 +8,66 @@ mod human_ai;
 mod ui;
 mod constants;
 mod helpers;
-// mod general_analysis;
-use game::{VictoryStats, GameStructure};
-use ai::{SogoAI};
-use constants::{LINES, PARALLELOGRAMS, PLUSSES};
-use std::rc::Rc;
-use std::io;
-use std::thread;
+mod thread_synchronisation;
 
 extern crate kiss3d;
 extern crate glfw;
 extern crate nalgebra as na;
 
-fn echo_repl() {
-    let mut input = String::new();
-    loop {
-        io::stdin().read_line(&mut input);
-        println!("{}", input);
-    }
-}
+// mod general_analysis;
+use game::{GameStructure, GameState, PlayerColor};
+use thread_synchronisation::{UiEvent, CoreEvent};
+use ai::{SogoAI, TreeJudgementAI};
+use constants::{LINES}; //, PARALLELOGRAMS, PLUSSES};
+use std::rc::Rc;
+use std::thread;
+use std::sync::mpsc::{channel};
 
 fn main() {
-    thread::spawn(|| {
-        println!("Hello from a thread!");
-        echo_repl();
+
+    let (core_sender, core_receiver) = channel();
+    let (ui_sender, ui_receiver) = channel();
+
+    ui_sender.send(UiEvent::EmptyEvent).unwrap();
+    let core_sender_ui = core_sender.clone();
+
+    thread::spawn(move|| {
+        ui::run_ui(core_sender_ui, ui_receiver);
     });
 
-    ui::run_ui();
-}
-
-/*
-#[allow(dead_code)]
-fn run_all_matches(endurance : Vec<i32>, precision : i32) -> Vec<Vec<(i32, i32, f32)>> {
-    let structure = Rc::new(GameStructure::new(&PARALLELOGRAMS));
-    let mut result = Vec::new();
-    for i in 0..endurance.len() {
-        let mut result_row = Vec::new();
-        for j in 0..endurance.len() {
-            let mut result_cell = VictoryStats::new();
-            println!("Comparing {:?} to {:?}", endurance[i], endurance[j]);
-            let mut p1 = ai::MonteCarloAI::new(structure.clone(), endurance[i]);
-            let mut p2 = ai::MonteCarloAI::new(structure.clone(), endurance[j]);
-            for i in 0..precision {
-                println!("    Game {} of {}", i, precision);
-                let state = ai::run_match(&structure, &mut p1, &mut p2);
-                match state.victory_state {
-                    game::VictoryState::Win(game::PlayerColor::White) => result_cell.white += 1,
-                    game::VictoryState::Win(game::PlayerColor::Black) => result_cell.black += 1,
-                    game::VictoryState::Draw      => result_cell.draws  += 1,
-                    game::VictoryState::Undecided => (),
-                }
-            }
-            result_row.push(calculate_rank_difference(result_cell));
-        }
-        result.push(result_row);
-    }
-    println!("{:?}", result);
-    return result;
-}
-
-#[allow(dead_code)]
-fn calculate_rank_difference(stats : VictoryStats) -> (i32, i32, f32) {
-    let white_loss_frequency = (stats.black as f32) / ((stats.black as f32) + (stats.white as f32));
-    return (stats.white, stats.black, (1.0/white_loss_frequency - 1.0).ln());
-}
-
-
-
-fn main() {
     let structure = Rc::new(GameStructure::new(&LINES));
+    let mut state = GameState::new(&structure);
 
-    /*let mut tree = ai::MCTreeAI::new(structure.clone(), 1000);
-    for _ in 0..10000 {
-        tree.simulate_playout();
-    }
-    tree.root.print_some_info();*/
+    // let mut p2 = TreeJudgementAI::new(structure.clone(), 3);
+    let mut p2 = ai::MonteCarloAI::new(structure.clone(), 10000);
 
-    //run_all_matches(vec![500, 1000, 1500], 10);
+    // Block the thread until an event arrives, then unwraps and process it.
+    // If all senders are destroyed, the while loop will quit, as it receives a RecvError.
+    'event_loop: while let Ok(event) = core_receiver.recv() {
 
-    //let mut p1 = ai::MCTreeAI::new(structure.clone(), 10000);
-    let mut p1 = ai::MonteCarloAI::new(structure.clone(), 30000);
-    //let mut p2 = ai::MonteCarloAI::new(structure.clone(), 1000);
-    //let p2 = ai::TreeJudgementAI::new(structure.clone(), 3);
-    //let p1 = ai::RandomSogoAI::new();
-    //let p1 = ai::TreeJudgementAI::new(4);
-    let mut p2 = human_ai::HumanPlayer::Active;
-    let mut statics = VictoryStats { white : 0, black : 0, draws : 0};
-    for i in 0..40 {
-        println!("Game {}.", i);
-        let state = ai::run_match(&structure, &mut p1, &mut p2);
-        match state.victory_state {
-            game::VictoryState::Win(game::PlayerColor::White) => statics.white += 1,
-            game::VictoryState::Win(game::PlayerColor::Black) => statics.black += 1,
-            game::VictoryState::Draw      => statics.draws  += 1,
-            game::VictoryState::Undecided => (),
+        match event {
+            CoreEvent::DebugOutput(text) => println!("{}", text),
+            CoreEvent::Action {action, color} => {
+                if state.current_color == color {
+                    state.execute_action(&structure, &action);
+                    ui_sender.send(UiEvent::RenderAction{action : action, color : color}).unwrap();
+                    if !state.victory_state.active() {
+                        ui_sender.send(UiEvent::GameOver(state.victory_state)).unwrap();
+                    }
+                    if color == PlayerColor::White {
+                        // This is a hack to detect if it was a player move.
 
+                        // Ask the enemy AI to move
+                        let enemy_action = p2.decide_action(&state);
+                        core_sender.send(CoreEvent::Action{action : enemy_action, color : state.current_color}).unwrap();
+                    }
+                } else {
+                    panic!("A color was played out of turn!");
+                }
+            },
+            CoreEvent::Halt => {
+                break 'event_loop;
+            }
         }
-        //println!("The game took {:?} turns and ended with {:?}.", state.age, state.victory_state);
-        //human_ai::print_gamestate(&state);
     }
-    println!("There were {} white and {} black wins as well as {} draws.", statics.white, statics.black, statics.draws);
-    //*/
 }
- */ */

@@ -120,6 +120,12 @@ impl VictoryState {
             VictoryState::Win(color) => if color == perspective {1.0} else {0.0}
         }
     }
+    pub fn active(&self) -> bool {
+        match *self {
+            VictoryState::Undecided => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
