@@ -3,71 +3,113 @@ mod tests;
 
 mod game;
 mod ai;
-//mod ai_box;
-mod human_ai;
+mod tree_expand_ai;
 mod ui;
+mod game_view;
 mod constants;
 mod helpers;
 mod thread_synchronisation;
 
+// Command line argument parser
+extern crate clap;
+use clap::{App, Arg, SubCommand};
+
+// UI dependencies
 extern crate kiss3d;
 extern crate glfw;
 extern crate nalgebra as na;
 
-// mod general_analysis;
+extern crate rand;
+
 use game::{GameStructure, GameState, PlayerColor};
-use thread_synchronisation::{UiEvent, CoreEvent};
-use ai::{SogoAI, TreeJudgementAI};
-use constants::{LINES}; //, PARALLELOGRAMS, PLUSSES};
+use ai::StatelessAI;
+use constants::LINES; //, PARALLELOGRAMS, PLUSSES};
 use std::rc::Rc;
-use std::thread;
-use std::sync::mpsc::{channel};
 
 fn main() {
+    let matches = parse_command_line_input();
 
-    let (core_sender, core_receiver) = channel();
-    let (ui_sender, ui_receiver) = channel();
+    if let Some(batch_matches) = matches.subcommand_matches("batch") {
+        println!("Batch mode isn't implemented yet.");
+        return;
+    }
 
-    ui_sender.send(UiEvent::EmptyEvent).unwrap();
-    let core_sender_ui = core_sender.clone();
+    interactive();
+}
 
-    thread::spawn(move|| {
-        ui::run_ui(core_sender_ui, ui_receiver);
-    });
+fn parse_command_line_input<'clap>() -> clap::ArgMatches<'clap> {
+    let validate_integer = |s: String| match s.parse::<u32>() {
+        Ok(_) => Ok(()),
+        Err(_) => Err("Needs to be an integer.".to_owned()),
+    };
+
+    let batch_run = SubCommand::with_name("batch")
+        .about("Executes many AI matches at once.")
+        .arg(Arg::with_name("count")
+                 .short("n")
+                 .long("count")
+                 .help("How many matches should be played")
+                 .takes_value(true)
+                 .default_value("1")
+                 .validator(validate_integer));
+
+    App::new("Sogo - Play four in a row.")
+        .version("0.0.1")
+        .author("Rolf Sievers <rolf.sievers@posteo.de>")
+        .about("UI and AIs for Sogo.")
+        .subcommand(batch_run)
+        .get_matches()
+}
+
+fn interactive() {
+    let ui_connector = ui::UiConnector::new();
 
     let structure = Rc::new(GameStructure::new(&LINES));
+
+    // let mut p2 = ai::tree::TreeJudgementAI::new(structure.clone(), 3);
+    let mut p2 = ai::mc::MonteCarloAI::new(structure.clone(), 30000);
+
+    let mut ai_box : Box<StatelessAI> = Box::new(ai::mc::MonteCarloAI::new(structure.clone(), 30000));
+
+    // Run a game, this should look synchronous.
     let mut state = GameState::new(&structure);
 
-    // let mut p2 = TreeJudgementAI::new(structure.clone(), 3);
-    let mut p2 = ai::MonteCarloAI::new(structure.clone(), 10000);
+    loop {
+        user_turn(&ui_connector, &mut state, &structure);
 
-    // Block the thread until an event arrives, then unwraps and process it.
-    // If all senders are destroyed, the while loop will quit, as it receives a RecvError.
-    'event_loop: while let Ok(event) = core_receiver.recv() {
+        // Check for victory.
+        if !state.victory_state.active() {
+            println!("The Human has won the game.");
+            break;
+        }
 
-        match event {
-            CoreEvent::DebugOutput(text) => println!("{}", text),
-            CoreEvent::Action {action, color} => {
-                if state.current_color == color {
-                    state.execute_action(&structure, &action);
-                    ui_sender.send(UiEvent::RenderAction{action : action, color : color}).unwrap();
-                    if !state.victory_state.active() {
-                        ui_sender.send(UiEvent::GameOver(state.victory_state)).unwrap();
-                    }
-                    if color == PlayerColor::White {
-                        // This is a hack to detect if it was a player move.
+        ai_turn(&ui_connector, &mut p2, &mut state, &structure);
 
-                        // Ask the enemy AI to move
-                        let enemy_action = p2.decide_action(&state);
-                        core_sender.send(CoreEvent::Action{action : enemy_action, color : state.current_color}).unwrap();
-                    }
-                } else {
-                    panic!("A color was played out of turn!");
-                }
-            },
-            CoreEvent::Halt => {
-                break 'event_loop;
-            }
+        // Check for victory.
+        if !state.victory_state.active() {
+            println!("The AI has won the game.");
+            break;
         }
     }
+}
+
+fn user_turn(ui_connector: &ui::UiConnector, state: &mut GameState, structure: &GameStructure) {
+    // Wait for the player to make the first action
+    let action = ui_connector.wait_for_action().unwrap();
+
+    let color = state.current_color;
+    state.execute_action(&structure, &action);
+    ui_connector.confirmed_action(action, color).unwrap();
+}
+
+fn ai_turn<A: StatelessAI>(ui_connector: &ui::UiConnector,
+                      ai: &mut A,
+                      state: &mut GameState,
+                      structure: &GameStructure) {
+    // Let the AI take one action
+    let action = ai.action(&state);
+
+    let color = state.current_color;
+    state.execute_action(&structure, &action);
+    ui_connector.confirmed_action(action, color).unwrap();
 }
