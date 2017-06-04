@@ -18,4 +18,4 @@ install:
   - sudo make install
 script:
   - cargo build
-- cargo test
+  - cargo test
