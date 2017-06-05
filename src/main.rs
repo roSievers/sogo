@@ -21,7 +21,7 @@ extern crate nalgebra as na;
 
 extern crate rand;
 
-use game::{GameStructure};
+use game::GameStructure;
 use ai::StatelessAI;
 use constants::LINES; //, PARALLELOGRAMS, PLUSSES};
 use std::rc::Rc;
@@ -68,7 +68,7 @@ fn interactive() {
 
     let structure = Rc::new(GameStructure::new(&LINES));
 
-    let mut p2 = ai::tree::TreeJudgementAI::new(structure.clone(), 3);
+    let mut p2 = ai::tree::TreeJudgementAI::new(structure.clone(), 2);
     // let mut p2 = ai::mc::MonteCarloAI::new(structure.clone(), 10000);
     // let mut p2 = ai::random::RandomSogoAI::new();
 
@@ -104,9 +104,9 @@ fn user_turn(ui_connector: &ui::UiConnector, state: &mut game::State, structure:
 }
 
 fn ai_turn<A: StatelessAI>(ui_connector: &ui::UiConnector,
-                      ai: &mut A,
-                      state: &mut game::State,
-                      structure: &GameStructure) {
+                           ai: &mut A,
+                           state: &mut game::State,
+                           structure: &GameStructure) {
     // Let the AI take one action
     let action = ai.action(&state);
 
@@ -117,11 +117,29 @@ fn ai_turn<A: StatelessAI>(ui_connector: &ui::UiConnector,
 
 
 fn test() {
-    // This looks good.
     // TODO: Move this into ./tests
+    // This can also be a property based test.
+    // Ensure that all positions returned by the Subset iterator are
+    // contained in the Subset.
     let subset = game::Subset(33825);
     for position in subset.iter() {
         println!("{:?}", position);
         assert!(subset.contains(position));
     }
+
+
+    // TODO: Move this into ./tests
+    let structure = game::GameStructure::new(&LINES);
+    let mut state = game::State::new();
+
+    assert!(0 == ai::tree::easy_judgement(&structure, &state, game::PlayerColor::White));
+
+    state.insert(&structure, game::Position2::new(0, 0));
+
+    assert!(7 == ai::tree::easy_judgement(&structure, &state, game::PlayerColor::White));
+
+    state.insert(&structure, game::Position2::new(0, 3));
+
+    assert!(0 == ai::tree::easy_judgement(&structure, &state, game::PlayerColor::White));
+
 }

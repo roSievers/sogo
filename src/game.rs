@@ -75,6 +75,7 @@ impl Subset {
     }
 }
 
+#[derive(Debug)]
 struct SubsetStats {
     color: Option<PlayerColor>,
     objects: u8,
@@ -90,8 +91,7 @@ impl AddAssign<PointState> for SubsetStats {
                 self.objects += 1;
                 match self.color {
                     None => self.color = Some(color),
-                    Some(color) => {}
-                    _ => self.mixed = true,
+                    Some(new_color) => if color != new_color { self.mixed = true},
                 }
             }
         }

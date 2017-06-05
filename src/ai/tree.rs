@@ -6,7 +6,7 @@ use game::{Action, GameStructure, PlayerColor, LineState, VictoryState};
 use std::rc::Rc;
 
 
-fn easy_judgement(structure: &GameStructure, state: &game::State, my_color: PlayerColor) -> i32 {
+pub fn easy_judgement(structure: &GameStructure, state: &game::State, my_color: PlayerColor) -> i32 {
     let mut score = 0;
 
     for subset in &structure.source {
@@ -16,6 +16,7 @@ fn easy_judgement(structure: &GameStructure, state: &game::State, my_color: Play
             // If I'm still allowed to play, that must have been my win.
             LineState::Mixed => 0,
             LineState::Pure { color, count } => {
+                println!("{:?} -> {:?}:{}", subset, color, count);
                 (count * count * (if color == my_color { 1 } else { -1 })) as i32
             }
         }
