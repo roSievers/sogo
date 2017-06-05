@@ -2,7 +2,7 @@
 use ai::StatelessAI;
 
 use game;
-use game::{GameState, Action, GameStructure, PlayerColor, VictoryState, VictoryStats};
+use game::{Action, GameStructure, PlayerColor, VictoryState, VictoryStats};
 
 use std::rc::Rc;
 use rand::{thread_rng, Rng, Rand};
@@ -29,17 +29,18 @@ impl MonteCarloAI {
 }
 
 impl StatelessAI for MonteCarloAI {
-    fn action(&self, state: &GameState) -> Action {
+    fn action(&self, state: &game::State) -> Action {
         let my_color = state.current_color;
-        let endurance_per_action = self.endurance / (state.legal_actions.len() as i32);
+        let legal_actions = state.legal_actions();
+        let endurance_per_action = self.endurance / (legal_actions.len() as i32);
 
         // Each action is judged by running a certain number of random matches.
         // The action with the best win ratio is selected.
-        let (&best_action, _) = state
-            .legal_actions
+        let (&best_action, _) = legal_actions
             .iter()
             .map(|action| {
-                     let new_state = state.execute_action_functional(&self.structure, action);
+                     let mut new_state = state.clone();
+                     new_state.execute(&self.structure, *action);
                      let value = monte_carlo_judgement(&self.structure,
                                                        &new_state,
                                                        my_color,
@@ -54,7 +55,7 @@ impl StatelessAI for MonteCarloAI {
 }
 
 fn monte_carlo_judgement(structure: &GameStructure,
-                         state: &GameState,
+                         state: &game::State,
                          my_color: PlayerColor,
                          amount: i32)
                          -> i32 {
@@ -67,22 +68,22 @@ fn monte_carlo_judgement(structure: &GameStructure,
 }
 
 
-pub fn random_playout(structure: &GameStructure, state: &GameState) -> VictoryState {
+pub fn random_playout(structure: &GameStructure, state: &game::State) -> VictoryState {
     let mut my_state = state.clone();
     let mut rng = thread_rng();
     while my_state.victory_state == VictoryState::Undecided {
         let surrender = Action::Surrender;
-        let action = rng.choose(&my_state.legal_actions)
+        let action = rng.choose(&my_state.legal_actions())
             .unwrap_or(&surrender)
             .clone();
-        my_state.execute_action(structure, &action);
+        my_state.execute(structure, action);
     }
-    return my_state.victory_state;
+    my_state.victory_state
 }
 
 
 pub fn random_playout_sample(structure: &GameStructure,
-                             state: &GameState,
+                             state: &game::State,
                              number: i32)
                              -> VictoryStats {
     let mut statics = game::VictoryStats::new();

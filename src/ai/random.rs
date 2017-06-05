@@ -1,6 +1,6 @@
 
 use game;
-use game::{GameState, Action};
+use game::Action;
 
 use rand::{thread_rng, Rng, Rand};
 use ai::StatelessAI;
@@ -16,8 +16,8 @@ impl RandomSogoAI {
 }
 
 impl StatelessAI for RandomSogoAI {
-    fn action(&self, state : &GameState) -> Action {
-        thread_rng().choose(&state.legal_actions)
+    fn action(&self, state : &game::State) -> Action {
+        thread_rng().choose(&state.legal_actions())
             .map_or(Action::Surrender, |&a| a.clone())
     }
 }

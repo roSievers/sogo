@@ -8,7 +8,7 @@ use kiss3d::camera::{ArcBall, Camera};
 
 use std::mem;
 
-use game::{GameState, PlayerColor};
+use game::PlayerColor;
 
 const BALL_DIAMMETER: f32 = 0.6;
 const PLATE_HEIGHT: f32 = 0.4;

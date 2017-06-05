@@ -1,15 +1,83 @@
-use std::ops::{Not};
+use std::ops::Not;
 use helpers::EqualityVerifier;
 
 // The two dimensional position is a number between 0 and 15,
 // the three dimensional position is a number between 0 and 63.
-// Both fit into a i8.
-pub type Position = i8;
+//
+// But still, they should be differentiated and the type system must track this.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct Position2(u8);
+// Position3 is also known as FlatCoordinate in "legacy" code.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct Position3(u8);
+
+// Used for the GameStructure. This is a [bool; 64] in disguise.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct Subset(u64);
+
+impl Position2 {
+    pub fn new(x: u8, y: u8) -> Self {
+        debug_assert!(x <= 3 && y <= 3);
+        Position2(x + 4 * y)
+    }
+    pub fn with_height(self, z: u8) -> Position3 {
+        debug_assert!(z <= 3);
+        Position3(self.0 + 16 * z)
+    }
+}
+
+impl Position3 {
+    pub fn new(x: u8, y: u8, z: u8) -> Self {
+        debug_assert!(x <= 3 && y <= 3 && z <= 3);
+        Position3(x + 4 * y + 16 * z)
+    }
+    pub fn column(self) -> Position2 {
+        Position2(self.0 % 16)
+    }
+}
+
+impl Subset {
+    pub fn contains(self, position: Position3) -> bool {
+        (self.0 >> position.0) % 2 == 1
+    }
+    pub fn iter(self) -> SubsetIterator {
+        SubsetIterator {
+            step_count: 0,
+            shape: self.0,
+        }
+    }
+}
+
+pub struct SubsetIterator {
+    step_count: u8,
+    shape: u64,
+}
+
+impl Iterator for SubsetIterator {
+    type Item = Position3;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.step_count == 64 {
+            None
+        } else {
+            if self.step_count != 0 {
+                self.shape /= 2;
+            }
+
+            self.step_count += 1;
+
+            if self.shape % 2 == 1 {
+                Some(Position3(self.step_count - 1))
+            } else {
+                self.next()
+            }
+        }
+    }
+}
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum PlayerColor {
     White,
-    Black
+    Black,
 }
 
 // This implementation allows PlayerColor::White == !PlayerColor::Black.
@@ -19,21 +87,24 @@ impl Not for PlayerColor {
     fn not(self) -> PlayerColor {
         match self {
             PlayerColor::White => PlayerColor::Black,
-            PlayerColor::Black => PlayerColor::White
+            PlayerColor::Black => PlayerColor::White,
         }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Point {
-    pub flat_coordinate : usize,
-    pub lines : Vec<usize> // This vector stores the IDs of all lines through it.
+    pub flat_coordinate: usize,
+    pub lines: Vec<usize>, // This vector stores the IDs of all lines through it.
 }
 
 impl Point {
     // constructor, by convention
-    pub fn new(x:i8, y:i8, z:i8) -> Point {
-        Point {flat_coordinate:flatten(x, y, z), lines:Vec::new()} //, lines : Vec::new()}
+    pub fn new(x: i8, y: i8, z: i8) -> Point {
+        Point {
+            flat_coordinate: flatten(x, y, z),
+            lines: Vec::new(),
+        } //, lines : Vec::new()}
     }
 
     // Allow the coordinate getters to stay around for debugging purposes.
@@ -51,27 +122,29 @@ impl Point {
     }
 }
 
-pub fn flatten(x:i8, y:i8, z:i8) -> usize {
-    return (x + 4*y + 16*z) as usize
+pub fn flatten(x: i8, y: i8, z: i8) -> usize {
+    return (x + 4 * y + 16 * z) as usize;
 }
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum Action {
-    Play {x : i8, y : i8},
-    Surrender
+    // FIXME: This should store a Position2 instead.
+    Play { x: i8, y: i8 },
+    Surrender,
 }
 
 impl Action {
-    pub fn new(x : i8, y : i8) -> Action {
-        Action::Play {x:x, y:y}
+    pub fn new(x: i8, y: i8) -> Action {
+        Action::Play { x: x, y: y }
     }
-    pub fn flat(flat_coordinate : i8) -> Action {
+    // FIXME: This should take a Position2 instead
+    pub fn flat(flat_coordinate: i8) -> Action {
         Action::new(flat_coordinate % 4, flat_coordinate / 4)
     }
     pub fn unwrap(&self) -> (i8, i8) {
         match self {
-            &Action::Play {x : x, y : y} => (x, y),
-            _ => panic!("Unwrapping the Action failed.")
+            &Action::Play { x: x, y: y } => (x, y),
+            _ => panic!("Unwrapping the Action failed."),
         }
     }
 }
@@ -79,9 +152,10 @@ impl Action {
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum PointState {
     Piece(PlayerColor),
-    Empty
+    Empty,
 }
 
+// TODO: Move this into AI. There is no reason to store it inside the game::State.
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum LineState {
     Empty,
@@ -91,16 +165,36 @@ pub enum LineState {
 }
 
 impl LineState {
-    fn add_ball_functional(line_state : LineState, new_color : PlayerColor, max_size : i8) -> LineState {
+    fn add_ball_functional(line_state: LineState,
+                           new_color: PlayerColor,
+                           max_size: i8)
+                           -> LineState {
         match line_state {
-            LineState::Empty => LineState::Pure { color : new_color, count : 1},
-            LineState::Pure { color : current_color, count : old_count} =>
-                if current_color != new_color { LineState::Mixed } else {
-                    if old_count == max_size - 1 {LineState::Win(current_color)}
-                    else {LineState::Pure {color : current_color, count : old_count+1}}
-                },
+            LineState::Empty => {
+                LineState::Pure {
+                    color: new_color,
+                    count: 1,
+                }
+            }
+            LineState::Pure {
+                color: current_color,
+                count: old_count,
+            } => {
+                if current_color != new_color {
+                    LineState::Mixed
+                } else {
+                    if old_count == max_size - 1 {
+                        LineState::Win(current_color)
+                    } else {
+                        LineState::Pure {
+                            color: current_color,
+                            count: old_count + 1,
+                        }
+                    }
+                }
+            }
             LineState::Mixed => LineState::Mixed,
-            LineState::Win(_) => panic!("A filled line can't accept any more balls.")
+            LineState::Win(_) => panic!("A filled line can't accept any more balls."),
         }
     }
 }
@@ -109,15 +203,15 @@ impl LineState {
 pub enum VictoryState {
     Undecided,
     Win(PlayerColor),
-    Draw
+    Draw,
 }
 
 impl VictoryState {
-    pub fn as_float(&self, perspective : PlayerColor) -> f32 {
+    pub fn as_float(&self, perspective: PlayerColor) -> f32 {
         match *self {
             VictoryState::Undecided => 0.5,
             VictoryState::Draw => 0.5,
-            VictoryState::Win(color) => if color == perspective {1.0} else {0.0}
+            VictoryState::Win(color) => if color == perspective { 1.0 } else { 0.0 },
         }
     }
     pub fn active(&self) -> bool {
@@ -128,29 +222,35 @@ impl VictoryState {
     }
 }
 
+// TODO: Move this elsewhere
 #[derive(Debug, Copy, Clone)]
 pub struct VictoryStats {
-    pub white : i32,
-    pub black : i32,
-    pub draws : i32,
+    pub white: i32,
+    pub black: i32,
+    pub draws: i32,
 }
 
 impl VictoryStats {
     pub fn new() -> VictoryStats {
-        VictoryStats { white : 0, black : 0, draws : 0}
+        VictoryStats {
+            white: 0,
+            black: 0,
+            draws: 0,
+        }
     }
 }
 
 #[derive(Clone)]
 pub struct GameStructure {
-    pub points : Vec<Point>,
-    victory_object_count : usize,
+    pub points: Vec<Point>,
+    pub source: Vec<Subset>,
+    victory_object_count: usize,
     // All victory objects need to be of the same size. This is an implementation restriction.
-    victory_object_size : i8,
+    victory_object_size: i8,
 }
 
 impl GameStructure {
-    pub fn new(victory_objects : &[u64]) -> GameStructure {
+    pub fn new(victory_objects: &[u64]) -> GameStructure {
         // Initialize a vector of all Points.
         let mut point_box = Vec::new();
         for z in 0..4 {
@@ -180,101 +280,98 @@ impl GameStructure {
             }
         }
 
+        let source = victory_objects.iter().map(|v| Subset(*v)).collect();
+
         GameStructure {
-            points : point_box,
-            victory_object_count : victory_objects.len(),
-            victory_object_size : object_count.unwrap(),
+            points: point_box,
+            source: source,
+            victory_object_count: victory_objects.len(),
+            victory_object_size: object_count.unwrap(),
         }
     }
 }
 
-#[derive(Clone)]
-pub struct GameState {
-    pub points : Vec<PointState>, // Maybe we want to change this into a Vector.
-    pub lines  : Vec<LineState>,
-    pub current_color : PlayerColor,
-    pub victory_state : VictoryState,
-    pub age : i8, // how many balls were played?
-    pub legal_actions : Vec<Action>,
+// The new State, replaces the old GameState
+pub struct State {
+    pub points: [PointState; 64],
+    pub current_color: PlayerColor,
+    pub age: i8, // How many actions were played?
+    // Everything below here is cached information.
+    pub victory_state: VictoryState,
+    // Caches the column height (0, 1, 2, 3) to quickly determine available moves.
+    pub column_height: [u8; 16],
 }
 
-impl GameState {
-    pub fn new(structure : &GameStructure) -> GameState {
-        // The board is empty and all actions are legal
-        let mut legal = Vec::new();
-        for x in 0..4 {
-            for y in 0..4 {
-                legal.push(Action::new(x,y));
-            }
-        }
-        GameState {
-            points : vec![PointState::Empty; 64],
-            lines : vec![LineState::Empty; structure.victory_object_count],
-            current_color : PlayerColor::White,
-            victory_state : VictoryState::Undecided,
-            age : 0,
-            legal_actions : legal,
+impl State {
+    pub fn new() -> Self {
+        State {
+            points: [PointState::Empty; 64],
+            current_color: PlayerColor::White,
+            age: 0,
+            victory_state: VictoryState::Undecided,
+            column_height: [0; 16],
         }
     }
-
-    pub fn execute_action(&mut self, structure : &GameStructure, play : &Action) {
-        match play {
-            &Action::Surrender   => self.victory_state = VictoryState::Win(!self.current_color),
-            &Action::Play {x, y} => self.play_at(structure, x, y),
+    fn at(&self, position: Position3) -> PointState {
+        self.points[position.0 as usize]
+    }
+    pub fn execute(&mut self, structure: &GameStructure, action: Action) {
+        match action {
+            Action::Surrender => self.victory_state = VictoryState::Win(!self.current_color),
+            Action::Play { x, y } => self.insert(structure, Position2::new(x as u8, y as u8)),
         }
     }
-    pub fn execute_action_functional(&self, structure : &GameStructure, play : &Action) -> GameState {
-        let mut result = self.clone();
-        result.execute_action(structure, &play);
-        return result;
-    }
-
-    // Idea: This could be cached inside each gamestate.
-    // Height at which a new ball would be placed.
-    pub fn z_value(&self, x : i8, y : i8) -> Option<i8> {
-        for z in 0..4 {
-            if self.points[flatten(x, y, z)] == PointState::Empty {
-                return Some(z)
-            }
-        }
-        return None
-    }
-
-    fn play_at(&mut self, structure : &GameStructure, x:i8, y:i8) {
-        let z = self.z_value(x, y);
-        let flat_coordinate = match z {
-            Some(z) => flatten(x, y, z),
-            None => panic!("Added a ball at ({}, {}), which is already full.", x, y)
+    // Panics, if the column is already full.
+    pub fn insert(&mut self, structure: &GameStructure, column: Position2) {
+        let position = {
+            let z = self.column_height.get_mut(column.0 as usize).unwrap();
+            let position = column.with_height(*z);
+            *z += 1;
+            position
         };
-        // Place a colored piece at the coordinate
-        self.points[flat_coordinate] = PointState::Piece(self.current_color);
-        // Update the legal actions, if the z-coordinate is 3
-        // I make use of the fact that the z coordinate is occupying the top two bits.
-        if flat_coordinate >= 4*4*3 {
-            // As the legal actions will be mixed up during play, we need to search through all.
-            for i in 0..self.legal_actions.len() {
-                // TODO: Don't construct a new Action object just to compare.
-                if self.legal_actions[i] == Action::new(x, y) {
-                    self.legal_actions.swap_remove(i);
-                    // Removes an element from anywhere in the vector and return it, replacing it with the last element.
-                    // This does not preserve ordering, but is O(1).
-                    break;
+        self.points[position.0 as usize] = PointState::Piece(self.current_color);
+        self.age += 1;
+        self.current_color = !self.current_color;
+        self.update_victory_state(structure, position);
+    }
+    fn update_victory_state(&mut self, structure: &GameStructure, position: Position3) {
+        // TODO: Will be faster, if I properly use the reverse lookup table.
+        for subset in &structure.source {
+            if subset.contains(position) {
+                if subset
+                       .iter()
+                       .all(|pos2| self.at(pos2) == PointState::Piece(self.current_color)) {
+                    self.victory_state = VictoryState::Win(self.current_color);
+                    return;
                 }
             }
         }
-        for line in structure.points[flat_coordinate].lines.clone() {
-            //println!("{:?}", usize::max_value());
-            let line_state = LineState::add_ball_functional(self.lines[line], self.current_color, structure.victory_object_size);
-            match line_state {
-                LineState::Win(color) => self.victory_state = VictoryState::Win(color),
-                _ => (),
-            }
-            self.lines[line] = line_state;
+    }
+    // TODO: Convert this into an iterator when `impl Trait` lands.
+    // This is predicted for 1.20 on 31st of August 2017.
+    // https://internals.rust-lang.org/t/rust-release-milestone-predictions/4591
+    // Or change to nightly at any point :P
+    // This should actually return `Iterator<Action>` and avoid allocation :-I
+    pub fn legal_actions(&self) -> Vec<Action> {
+        // Fuck missing impl trait xP
+        self.column_height
+            .iter()
+            .enumerate()
+            .filter(|&(_, h)| *h <= 3)
+            .map(|(i, _)| Action::flat(i as i8))
+            .collect()
+    }
+}
+
+// Once [T; 64] becomes Clone, not just Copy, this can be derived.
+impl Clone for State {
+    fn clone(&self) -> Self {
+        State {
+            points: self.points,
+            current_color: self.current_color,
+            age: self.age,
+            victory_state: self.victory_state,
+            column_height: self.column_height,
         }
-        self.age += 1;
-        if self.age == 64 && self.victory_state == VictoryState::Undecided {
-            self.victory_state = VictoryState::Draw;
-        }
-        self.current_color = !self.current_color;
     }
 }

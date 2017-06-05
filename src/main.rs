@@ -21,7 +21,7 @@ extern crate nalgebra as na;
 
 extern crate rand;
 
-use game::{GameStructure, GameState, PlayerColor};
+use game::{GameStructure};
 use ai::StatelessAI;
 use constants::LINES; //, PARALLELOGRAMS, PLUSSES};
 use std::rc::Rc;
@@ -67,12 +67,10 @@ fn interactive() {
     let structure = Rc::new(GameStructure::new(&LINES));
 
     // let mut p2 = ai::tree::TreeJudgementAI::new(structure.clone(), 3);
-    let mut p2 = ai::mc::MonteCarloAI::new(structure.clone(), 30000);
-
-    let mut ai_box : Box<StatelessAI> = Box::new(ai::mc::MonteCarloAI::new(structure.clone(), 30000));
+    let mut p2 = ai::mc::MonteCarloAI::new(structure.clone(), 1000);
 
     // Run a game, this should look synchronous.
-    let mut state = GameState::new(&structure);
+    let mut state = game::State::new();
 
     loop {
         user_turn(&ui_connector, &mut state, &structure);
@@ -93,23 +91,23 @@ fn interactive() {
     }
 }
 
-fn user_turn(ui_connector: &ui::UiConnector, state: &mut GameState, structure: &GameStructure) {
+fn user_turn(ui_connector: &ui::UiConnector, state: &mut game::State, structure: &GameStructure) {
     // Wait for the player to make the first action
     let action = ui_connector.wait_for_action().unwrap();
 
     let color = state.current_color;
-    state.execute_action(&structure, &action);
+    state.execute(&structure, action);
     ui_connector.confirmed_action(action, color).unwrap();
 }
 
 fn ai_turn<A: StatelessAI>(ui_connector: &ui::UiConnector,
                       ai: &mut A,
-                      state: &mut GameState,
+                      state: &mut game::State,
                       structure: &GameStructure) {
     // Let the AI take one action
     let action = ai.action(&state);
 
     let color = state.current_color;
-    state.execute_action(&structure, &action);
+    state.execute(&structure, action);
     ui_connector.confirmed_action(action, color).unwrap();
 }

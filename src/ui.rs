@@ -18,8 +18,6 @@ use kiss3d::light::Light;
 use kiss3d::camera::{ArcBall, Camera};
 use kiss3d::scene::SceneNode;
 
-use game::{GameState, PlayerColor};
-
 enum UiState {
     WaitingForPlayerMove,
     WaitingForAiMove,
@@ -102,8 +100,9 @@ impl UiConnector {
 
 pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
     let structure = Rc::new(GameStructure::new(&LINES));
-    let mut state = GameState::new(&structure);
-    let mut history = ActionHistory::new();
+    // let mut state = GameState::new(&structure);
+    let mut game_state = game::State::new();
+    //let mut history = ActionHistory::new();
 
     let mut view_state = game_view::State::empty();
 
@@ -118,14 +117,14 @@ pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
             match event {
                 UiEvent::RenderAction { action, color } => {
                     let (x, z) = action.unwrap();
-                    let height = state.z_value(x, z).unwrap();
+                    let height = game_state.column_height[(x + 4 * z) as usize];
                     let new_piece = game_view::add_piece(window.scene_mut(),
                                                          x as i32,
                                                          height as i32,
                                                          z as i32,
                                                          color);
-                    state.execute_action(&structure, &action);
-                    history.add(action, new_piece);
+                    game_state.execute(&structure, action);
+                    // history.add(action, new_piece);
                 }
                 remainder => println!("Unhandled thread event in UI: {:?}.", remainder),
             }
@@ -138,31 +137,31 @@ pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
                     let placement_candidate =
                         game_view::placement_coordinate(&window, &camera, (x, y));
                     view_state.placement_hint(window.scene_mut(),
-                                              state.current_color,
+                                              game_state.current_color,
                                               placement_candidate);
                 }
                 WindowEvent::MouseButton(MouseButton::Button1, Action::Release, _) => {
                     if let Some((x_value, z_value)) = view_state.placement_position() {
                         // Is placing a piece allowed?
-                        if state.z_value(x_value as i8, z_value as i8).is_some() {
+                        if game_state.column_height[(x_value + 4 * z_value) as usize] <= 3 {
                             let action = game::Action::new(x_value as i8, z_value as i8);
                             core_sender
                                 .send(CoreEvent::Action {
                                           action: action,
-                                          color: state.current_color,
+                                          color: game_state.current_color,
                                       })
                                 .unwrap();
                         }
                     }
                 }
-                WindowEvent::Key(Key::Left, _, Action::Release, _) => {
+                /*WindowEvent::Key(Key::Left, _, Action::Release, _) => {
                     history.undo();
                     state = history.game_state(&structure);
                 }
                 WindowEvent::Key(Key::Right, _, Action::Release, _) => {
                     history.redo(window.scene_mut());
                     state = history.game_state(&structure);
-                }
+                }*/
                 _ => {}
             }
         }
@@ -170,7 +169,7 @@ pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
     core_sender.send(CoreEvent::Halt).unwrap();
 }
 
-
+/*
 struct ActionHistory {
     actions: Vec<(game::Action, SceneNode)>,
     // The current times is the amount of actions passed.
@@ -225,4 +224,4 @@ impl ActionHistory {
             self.current_time += 1;
         }
     }
-}
+}*/

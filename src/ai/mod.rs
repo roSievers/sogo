@@ -3,38 +3,39 @@
 
 pub mod random;
 pub mod mc;
-pub mod tree;
+// pub mod tree; //FIXME
 
-use rand::{thread_rng, Rng, Rand};
 use game;
-use game::{GameState, GameStructure, PlayerColor, VictoryState, VictoryStats, LineState, Action};
+use game::{GameStructure, PlayerColor, VictoryState, VictoryStats, LineState, Action};
 use std::rc::Rc;
 use helpers::upper_bound_index;
 
-pub trait SogoAI {
+/*pub trait SogoAI {
     fn reset_game(&mut self);
     // Some information may be preserved after an opponent's turn.
     // Tree based algorithms may carry over part of the search tree.
     fn register_opponent_action(&mut self, &Action);
     fn decide_action(&mut self, state : &GameState) -> Action;
         // An imutable reference to the game_state is passed for convenience only.
-}
+}*/
 
 // I should first focus on stateless AIs. The current AIs are all stateless
 // and I shouldn't have to deal with the extra baggage.
 pub trait StatelessAI {
-    fn action(&self, state: &GameState) -> Action;
+    fn action(&self, state: &game::State) -> Action;
 }
 
-impl<Ai: StatelessAI> SogoAI for Ai {
+/*impl<Ai: StatelessAI> SogoAI for Ai {
     fn reset_game(&mut self) {}
     fn register_opponent_action(&mut self, _ : &Action) {}
     fn decide_action(&mut self, state : &GameState) -> Action {
         self.action(state)
     }
-}
+}*/
 
-pub fn run_match<T : SogoAI, U : SogoAI>(
+
+// FIXME: The tests rely on this.
+/*pub fn run_match<T : StatelessAI, U : StatelessAI>(
         structure : &GameStructure, white_player : &mut T, black_player : &mut U)
         -> GameState {
     let mut i = 0;
@@ -52,4 +53,4 @@ pub fn run_match<T : SogoAI, U : SogoAI>(
     }
     // println!("{:?}", i);
     return state;
-}
+}*/
