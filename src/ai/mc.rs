@@ -31,7 +31,7 @@ impl MonteCarloAI {
 impl StatelessAI for MonteCarloAI {
     fn action(&self, state: &game::State) -> Action {
         let my_color = state.current_color;
-        let legal_actions = state.legal_actions();
+        let legal_actions : Vec<Action> = state.legal_actions().collect();
         let endurance_per_action = self.endurance / (legal_actions.len() as i32);
 
         // Each action is judged by running a certain number of random matches.
@@ -73,10 +73,10 @@ pub fn random_playout(structure: &GameStructure, state: &game::State) -> Victory
     let mut rng = thread_rng();
     while my_state.victory_state == VictoryState::Undecided {
         let surrender = Action::Surrender;
-        let action = rng.choose(&my_state.legal_actions())
-            .unwrap_or(&surrender)
-            .clone();
-        my_state.execute(structure, action);
+        let legal_actions : Vec<Action> = my_state.legal_actions().collect();
+        let action = rng.choose(&legal_actions)
+            .unwrap_or(&surrender);
+        my_state.execute(structure, *action);
     }
     my_state.victory_state
 }

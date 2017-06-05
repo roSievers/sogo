@@ -17,7 +17,8 @@ impl RandomSogoAI {
 
 impl StatelessAI for RandomSogoAI {
     fn action(&self, state : &game::State) -> Action {
-        thread_rng().choose(&state.legal_actions())
+        let legal_actions : Vec<Action> = state.legal_actions().collect();
+        thread_rng().choose(&legal_actions)
             .map_or(Action::Surrender, |&a| a.clone())
     }
 }

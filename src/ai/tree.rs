@@ -6,10 +6,11 @@ use game::{Action, GameStructure, PlayerColor, LineState, VictoryState};
 use std::rc::Rc;
 
 
-fn easy_judgement(state: &game::State, my_color: PlayerColor) -> i32 {
+fn easy_judgement(structure: &GameStructure, state: &game::State, my_color: PlayerColor) -> i32 {
     let mut score = 0;
-    for line in &state.lines {
-        score += match *line {
+
+    for subset in &structure.source {
+        score += match subset.win_state(state) {
             LineState::Empty => 0,
             LineState::Win(color) => 1000 * (if color == my_color { 1 } else { -1 }),
             // If I'm still allowed to play, that must have been my win.
@@ -19,7 +20,8 @@ fn easy_judgement(state: &game::State, my_color: PlayerColor) -> i32 {
             }
         }
     }
-    return score;
+
+    score
 }
 
 #[allow(dead_code)]
@@ -48,7 +50,7 @@ impl StatelessAI for TreeJudgementAI {
 
         let my_easy_judgement = |state: &game::State| {
             MinMaxTagging {
-                value: easy_judgement(state, my_color),
+                value: easy_judgement(&self.structure, state, my_color),
                 from_action: None,
             }
         };
@@ -96,9 +98,11 @@ impl<T: Default> Node<T> {
         match self.children {
             Branching::Unexpanded => {
                 let mut children = Vec::new();
-                for action in &self.state.legal_actions {
+                for action in self.state.legal_actions() {
+                    let mut new_state = self.state.clone();
+                    new_state.execute(structure, action);
                     let mut child =
-                        Node::new(self.state.execute_action_functional(structure, &action),
+                        Node::new(new_state,
                                   Some(action.clone()));
                     if child.state.victory_state != VictoryState::Undecided {
                         child.children = Branching::GameOver;

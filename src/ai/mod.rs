@@ -3,7 +3,7 @@
 
 pub mod random;
 pub mod mc;
-// pub mod tree; //FIXME
+pub mod tree; //FIXME
 
 use game;
 use game::{GameStructure, PlayerColor, VictoryState, VictoryStats, LineState, Action};

@@ -1,4 +1,4 @@
-use std::ops::Not;
+use std::ops::{AddAssign, Not};
 use helpers::EqualityVerifier;
 
 // The two dimensional position is a number between 0 and 15,
@@ -13,7 +13,7 @@ pub struct Position3(u8);
 
 // Used for the GameStructure. This is a [bool; 64] in disguise.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Subset(u64);
+pub struct Subset(pub u64);
 
 impl Position2 {
     pub fn new(x: u8, y: u8) -> Self {
@@ -30,6 +30,7 @@ impl Position2 {
 }
 
 impl Position3 {
+    #[allow(dead_code)]
     pub fn new(x: u8, y: u8, z: u8) -> Self {
         debug_assert!(x <= 3 && y <= 3 && z <= 3);
         Position3(x + 4 * y + 16 * z)
@@ -52,7 +53,51 @@ impl Subset {
             shape: self.0,
         }
     }
+    pub fn win_state(self, state: &State) -> LineState {
+        let mut stats = SubsetStats {
+            color: None,
+            objects: 0,
+            full: true,
+            mixed: false,
+        };
+        for point in self.iter().map(|p| state.at(p)) {
+            stats += point;
+        }
+        if stats.mixed {
+            LineState::Mixed
+        } else if stats.full {
+            LineState::Win(stats.color.unwrap())
+        } else if stats.color == None {
+            LineState::Empty
+        } else {
+            LineState::Pure { color: stats.color.unwrap(), count: stats.objects as i8 }
+        }
+    }
 }
+
+struct SubsetStats {
+    color: Option<PlayerColor>,
+    objects: u8,
+    full: bool,
+    mixed: bool,
+}
+
+impl AddAssign<PointState> for SubsetStats {
+    fn add_assign(&mut self, new_point: PointState) {
+        match new_point {
+            PointState::Empty => self.full = false,
+            PointState::Piece(color) => {
+                self.objects += 1;
+                match self.color {
+                    None => self.color = Some(color),
+                    Some(color) => {}
+                    _ => self.mixed = true,
+                }
+            }
+        }
+    }
+}
+
 
 pub struct SubsetIterator {
     step_count: u8,
@@ -100,7 +145,6 @@ impl Not for PlayerColor {
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum Action {
-    // FIXME: This should store a Position2 instead.
     Play(Position2),
     Surrender,
 }
@@ -172,6 +216,7 @@ impl LineState {
     }
 }
 
+
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum VictoryState {
     Undecided,
@@ -195,7 +240,7 @@ impl VictoryState {
     }
 }
 
-// TODO: Move this elsewhere
+// TODO: Move this elsewhere, helpers for a start. Implement some traits
 #[derive(Debug, Copy, Clone)]
 pub struct VictoryStats {
     pub white: i32,
@@ -213,10 +258,14 @@ impl VictoryStats {
     }
 }
 
-#[derive(Clone)]
+
 pub struct GameStructure {
-    //pub points: Vec<Point>,
+    // A vector of all Subsets, complete one to win the game.
     pub source: Vec<Subset>,
+    // Contains a lookup table, given a Position3, this returns a vector of indices.
+    // The indices tell you which Subsets contain the Position3.
+    pub reverse: [Vec<usize>; 64],
+    //pub points: Vec<Point>,
     //victory_object_count: usize,
     // All victory objects need to be of the same size. This is an implementation restriction.
     //victory_object_size: i8,
@@ -224,51 +273,37 @@ pub struct GameStructure {
 
 impl GameStructure {
     pub fn new(victory_objects: &[u64]) -> GameStructure {
-        // Initialize a vector of all Points.
-        /*let mut point_box = Vec::new();
-        for z in 0..4 {
-            for y in 0..4 {
-                for x in 0..4 {
-                    point_box.push(Point::new(x, y, z));
-                }
+        // Convert raw u64 into Subset objects. (Which are u64 with extra structure.)
+        let source: Vec<Subset> = victory_objects.iter().map(|v| Subset(*v)).collect();
+        // Unfortunately, [vec![]; 64] does not work :-/
+        let mut reverse = [vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![],
+                           vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![],
+                           vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![],
+                           vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![],
+                           vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![],
+                           vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![],
+                           vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![],
+                           vec![]];
+
+        for (index, subset) in source.iter().enumerate() {
+            for position in subset.iter() {
+                reverse[position.0 as usize].push(index);
             }
         }
 
-        // Make sure the victory object count is the same for each object.
-        let mut object_count = EqualityVerifier::new();
-
-        // Refenence the line ID in the points.
-        for line_id in 0..victory_objects.len() {
-            // rep is a u64 encoding of the line.
-            let mut rep = victory_objects[line_id];
-            object_count.update(rep.count_ones() as i8);
-            let mut flat = 0;
-            while rep > 0 {
-                // A one indicates that this line has a point at that particular position.
-                if rep % 2 == 1 {
-                    point_box[flat].lines.push(line_id);
-                }
-                rep /= 2;
-                flat += 1;
-            }
-        }*/
-
-        let source = victory_objects.iter().map(|v| Subset(*v)).collect();
-
         GameStructure {
-            //points: point_box,
-            source: source,
+            source,
+            reverse,
             //victory_object_count: victory_objects.len(),
             //victory_object_size: object_count.unwrap(),
         }
     }
 }
 
-// The new State, replaces the old GameState
 pub struct State {
     pub points: [PointState; 64],
     pub current_color: PlayerColor,
-    pub age: i8, // How many actions were played?
+    pub age: u8, // How many actions were played?
     // Everything below here is cached information.
     pub victory_state: VictoryState,
     // Caches the column height (0, 1, 2, 3) to quickly determine available moves.
@@ -304,35 +339,30 @@ impl State {
         };
         self.points[position.0 as usize] = PointState::Piece(self.current_color);
         self.age += 1;
-        self.current_color = !self.current_color;
         self.update_victory_state(structure, position);
+        self.current_color = !self.current_color;
     }
     fn update_victory_state(&mut self, structure: &GameStructure, position: Position3) {
-        // TODO: Will be faster, if I properly use the reverse lookup table.
-        for subset in &structure.source {
-            if subset.contains(position) {
-                if subset
-                       .iter()
-                       .all(|pos2| self.at(pos2) == PointState::Piece(self.current_color)) {
-                    self.victory_state = VictoryState::Win(self.current_color);
-                    return;
-                }
+        for subset_index in structure.reverse[position.0 as usize].iter() {
+            if structure.source[*subset_index]
+                   .iter()
+                   .all(|pos2| self.at(pos2) == PointState::Piece(self.current_color)) {
+                self.victory_state = VictoryState::Win(self.current_color);
+                return;
             }
         }
     }
-    // TODO: Convert this into an iterator when `impl Trait` lands.
+    // TODO: Remove the Box when `impl Trait` lands.
     // This is predicted for 1.20 on 31st of August 2017.
     // https://internals.rust-lang.org/t/rust-release-milestone-predictions/4591
     // Or change to nightly at any point :P
-    // This should actually return `Iterator<Action>` and avoid allocation :-I
-    pub fn legal_actions(&self) -> Vec<Action> {
+    pub fn legal_actions<'a>(&'a self) -> Box<Iterator<Item = Action> + 'a> {
         // Fuck missing impl trait xP
-        self.column_height
-            .iter()
-            .enumerate()
-            .filter(|&(_, h)| *h <= 3)
-            .map(|(i, _)| Position2(i as u8).into())
-            .collect()
+        Box::new(self.column_height
+                     .iter()
+                     .enumerate()
+                     .filter(|&(_, h)| *h <= 3)
+                     .map(|(i, _)| Position2(i as u8).into()))
     }
 }
 

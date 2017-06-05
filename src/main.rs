@@ -62,12 +62,15 @@ fn parse_command_line_input<'clap>() -> clap::ArgMatches<'clap> {
 }
 
 fn interactive() {
+    test();
+
     let ui_connector = ui::UiConnector::new();
 
     let structure = Rc::new(GameStructure::new(&LINES));
 
-    // let mut p2 = ai::tree::TreeJudgementAI::new(structure.clone(), 3);
-    let mut p2 = ai::mc::MonteCarloAI::new(structure.clone(), 1000);
+    let mut p2 = ai::tree::TreeJudgementAI::new(structure.clone(), 3);
+    // let mut p2 = ai::mc::MonteCarloAI::new(structure.clone(), 10000);
+    // let mut p2 = ai::random::RandomSogoAI::new();
 
     // Run a game, this should look synchronous.
     let mut state = game::State::new();
@@ -110,4 +113,15 @@ fn ai_turn<A: StatelessAI>(ui_connector: &ui::UiConnector,
     let color = state.current_color;
     state.execute(&structure, action);
     ui_connector.confirmed_action(action, color).unwrap();
+}
+
+
+fn test() {
+    // This looks good.
+    // TODO: Move this into ./tests
+    let subset = game::Subset(33825);
+    for position in subset.iter() {
+        println!("{:?}", position);
+        assert!(subset.contains(position));
+    }
 }
