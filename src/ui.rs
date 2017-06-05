@@ -1,6 +1,6 @@
 
 use game_view;
-use game::GameStructure;
+use game::{GameStructure, Position2};
 use game;
 use thread_synchronisation::{CoreEvent, UiEvent};
 use constants::LINES; //, PARALLELOGRAMS, PLUSSES};
@@ -116,7 +116,7 @@ pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
         while let Ok(event) = ui_receiver.try_recv() {
             match event {
                 UiEvent::RenderAction { action, color } => {
-                    let (x, z) = action.unwrap();
+                    let (x, z) = action.unwrap().coords();
                     let height = game_state.column_height[(x + 4 * z) as usize];
                     let new_piece = game_view::add_piece(window.scene_mut(),
                                                          x as i32,
@@ -144,7 +144,7 @@ pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
                     if let Some((x_value, z_value)) = view_state.placement_position() {
                         // Is placing a piece allowed?
                         if game_state.column_height[(x_value + 4 * z_value) as usize] <= 3 {
-                            let action = game::Action::new(x_value as i8, z_value as i8);
+                            let action = Position2::new(x_value as u8, z_value as u8).into();
                             core_sender
                                 .send(CoreEvent::Action {
                                           action: action,

@@ -24,6 +24,9 @@ impl Position2 {
         debug_assert!(z <= 3);
         Position3(self.0 + 16 * z)
     }
+    pub fn coords(self) -> (u8, u8) {
+        (self.0 % 4, self.0 / 4)
+    }
 }
 
 impl Position3 {
@@ -31,8 +34,11 @@ impl Position3 {
         debug_assert!(x <= 3 && y <= 3 && z <= 3);
         Position3(x + 4 * y + 16 * z)
     }
-    pub fn column(self) -> Position2 {
-        Position2(self.0 % 16)
+}
+
+impl From<Position3> for Position2 {
+    fn from(position3: Position3) -> Position2 {
+        Position2(position3.0 % 16)
     }
 }
 
@@ -92,60 +98,27 @@ impl Not for PlayerColor {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Point {
-    pub flat_coordinate: usize,
-    pub lines: Vec<usize>, // This vector stores the IDs of all lines through it.
-}
-
-impl Point {
-    // constructor, by convention
-    pub fn new(x: i8, y: i8, z: i8) -> Point {
-        Point {
-            flat_coordinate: flatten(x, y, z),
-            lines: Vec::new(),
-        } //, lines : Vec::new()}
-    }
-
-    // Allow the coordinate getters to stay around for debugging purposes.
-    #[allow(dead_code)]
-    pub fn get_x(&self) -> usize {
-        self.flat_coordinate % 4
-    }
-    #[allow(dead_code)]
-    pub fn get_y(&self) -> usize {
-        (self.flat_coordinate / 4) % 4
-    }
-    #[allow(dead_code)]
-    pub fn get_z(&self) -> usize {
-        self.flat_coordinate / 16
-    }
-}
-
-pub fn flatten(x: i8, y: i8, z: i8) -> usize {
-    return (x + 4 * y + 16 * z) as usize;
-}
-
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum Action {
     // FIXME: This should store a Position2 instead.
-    Play { x: i8, y: i8 },
+    Play(Position2),
     Surrender,
 }
 
 impl Action {
-    pub fn new(x: i8, y: i8) -> Action {
-        Action::Play { x: x, y: y }
-    }
-    // FIXME: This should take a Position2 instead
-    pub fn flat(flat_coordinate: i8) -> Action {
-        Action::new(flat_coordinate % 4, flat_coordinate / 4)
-    }
-    pub fn unwrap(&self) -> (i8, i8) {
+    // No new function. If you want to create an Action, use Position2::into().
+    pub fn unwrap(self) -> Position2 {
         match self {
-            &Action::Play { x: x, y: y } => (x, y),
-            _ => panic!("Unwrapping the Action failed."),
+            Action::Play(position) => position,
+            Action::Surrender => panic!("You can't unwrap a Action::Surrender."),
         }
+    }
+}
+
+// This also gets me a free `impl Into<Action> for Position2`.
+impl From<Position2> for Action {
+    fn from(position: Position2) -> Action {
+        Action::Play(position)
     }
 }
 
@@ -242,17 +215,17 @@ impl VictoryStats {
 
 #[derive(Clone)]
 pub struct GameStructure {
-    pub points: Vec<Point>,
+    //pub points: Vec<Point>,
     pub source: Vec<Subset>,
-    victory_object_count: usize,
+    //victory_object_count: usize,
     // All victory objects need to be of the same size. This is an implementation restriction.
-    victory_object_size: i8,
+    //victory_object_size: i8,
 }
 
 impl GameStructure {
     pub fn new(victory_objects: &[u64]) -> GameStructure {
         // Initialize a vector of all Points.
-        let mut point_box = Vec::new();
+        /*let mut point_box = Vec::new();
         for z in 0..4 {
             for y in 0..4 {
                 for x in 0..4 {
@@ -278,15 +251,15 @@ impl GameStructure {
                 rep /= 2;
                 flat += 1;
             }
-        }
+        }*/
 
         let source = victory_objects.iter().map(|v| Subset(*v)).collect();
 
         GameStructure {
-            points: point_box,
+            //points: point_box,
             source: source,
-            victory_object_count: victory_objects.len(),
-            victory_object_size: object_count.unwrap(),
+            //victory_object_count: victory_objects.len(),
+            //victory_object_size: object_count.unwrap(),
         }
     }
 }
@@ -318,7 +291,7 @@ impl State {
     pub fn execute(&mut self, structure: &GameStructure, action: Action) {
         match action {
             Action::Surrender => self.victory_state = VictoryState::Win(!self.current_color),
-            Action::Play { x, y } => self.insert(structure, Position2::new(x as u8, y as u8)),
+            Action::Play(position) => self.insert(structure, position),
         }
     }
     // Panics, if the column is already full.
@@ -358,7 +331,7 @@ impl State {
             .iter()
             .enumerate()
             .filter(|&(_, h)| *h <= 3)
-            .map(|(i, _)| Action::flat(i as i8))
+            .map(|(i, _)| Position2(i as u8).into())
             .collect()
     }
 }
