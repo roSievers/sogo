@@ -28,14 +28,37 @@ use std::rc::Rc;
 fn main() {
     let matches = parse_command_line_input();
 
+    fn batch(arguments: &clap::ArgMatches) -> Result<(), String> {
+        let ai1_params = arguments.values_of("ai1").map(ai_parser).unwrap()?;
+        let ai2_params = arguments.values_of("ai2").map(ai_parser).unwrap()?;
+        let count: usize = arguments
+            .value_of("count")
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
+
+        let structure = Rc::new(game::Structure::new(&LINES));
+
+        let mut ai1 = ai::AIBox::new(structure.clone(), ai1_params);
+        let mut ai2 = ai::AIBox::new(structure.clone(), ai2_params);
+
+        for i in 1..count+1 {
+            println!("Match {} results in {:?}",
+                     i,
+                     ai::run_match(&structure, &mut ai1, &mut ai2).victory_state);
+        }
+        Ok(())
+    }
+
     if let Some(batch_matches) = matches.subcommand_matches("batch") {
-        println!("Batch mode isn't implemented yet.");
-        println!("Arguments: {:?}", batch_matches);
+
+        batch(batch_matches).unwrap();
+
         return;
     }
 
     let ai_parameter_result = matches
-        .values_of("player2ai")
+        .values_of("opponent")
         .map(ai_parser)
         .unwrap_or(Ok(ai::Constructor::MonteCarlo { endurance: 1000 }));
 
@@ -67,9 +90,19 @@ fn parse_command_line_input<'clap>() -> clap::ArgMatches<'clap> {
                  .help("How many matches should be played")
                  .takes_value(true)
                  .default_value("1")
-                 .validator(validate_integer));
+                 .validator(validate_integer))
+        .arg(Arg::with_name("ai1")
+                 .short("p")
+                 .required(true)
+                 .help("Specify first AI.")
+                 .min_values(1))
+        .arg(Arg::with_name("ai2")
+                 .short("q")
+                 .required(true)
+                 .help("Specify second AI.")
+                 .min_values(1));
 
-    let p2_ai = Arg::with_name("player2ai")
+    let opponent = Arg::with_name("opponent")
         .short("p")
         .long("player")
         .help("Specify which AI you want to play against.")
@@ -80,7 +113,7 @@ fn parse_command_line_input<'clap>() -> clap::ArgMatches<'clap> {
         .author("Rolf Sievers <rolf.sievers@posteo.de>")
         .about("UI and AIs for Sogo.")
         .subcommand(batch_run)
-        .arg(p2_ai)
+        .arg(opponent)
         .get_matches()
 }
 

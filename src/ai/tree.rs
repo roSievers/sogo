@@ -85,7 +85,7 @@ impl StatelessAI for TreeJudgementAI {
             .max_by_key(|&(_, value)| value)
             .unwrap();
 
-        println!("Executing {:?} with value {}.", best_action, best_value);
+        // println!("Executing {:?} with value {}.", best_action, best_value);
 
         best_action
     }

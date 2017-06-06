@@ -72,9 +72,6 @@ impl StatelessAI for AIBox {
 }*/
 
 
-#[allow(dead_code)]
-// This is required for the test code.
-// Will also be required for the batch code.
 pub fn run_match<T : StatelessAI, U : StatelessAI>(
         structure : &game::Structure, white_player : &mut T, black_player : &mut U)
         -> game::State {
