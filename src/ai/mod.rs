@@ -6,9 +6,7 @@ pub mod mc;
 pub mod tree; //FIXME
 
 use game;
-use game::{GameStructure, PlayerColor, VictoryState, VictoryStats, LineState, Action};
-use std::rc::Rc;
-use helpers::upper_bound_index;
+use game::{Action};
 
 /*pub trait SogoAI {
     fn reset_game(&mut self);
@@ -34,23 +32,24 @@ pub trait StatelessAI {
 }*/
 
 
-// FIXME: The tests rely on this.
-/*pub fn run_match<T : StatelessAI, U : StatelessAI>(
-        structure : &GameStructure, white_player : &mut T, black_player : &mut U)
-        -> GameState {
+#[allow(dead_code)]
+// This is required for the test code.
+// Will also be required for the batch code.
+pub fn run_match<T : StatelessAI, U : StatelessAI>(
+        structure : &game::GameStructure, white_player : &mut T, black_player : &mut U)
+        -> game::State {
     let mut i = 0;
 
-    let mut state = GameState::new(&structure);
-    while state.victory_state == VictoryState::Undecided {
+    let mut state = game::State::new();
+    while state.victory_state == game::VictoryState::Undecided {
         if state.age == 64 {
-            state.victory_state = VictoryState::Draw;
+            state.victory_state = game::VictoryState::Draw;
             return state;
         }
-        let action = if i % 2 == 0 {white_player.decide_action(&state)} else {black_player.decide_action(&state)};
-        if i % 2 == 0 {black_player.register_opponent_action(&action)} else {white_player.register_opponent_action(&action)};
-        state.execute_action(structure, &action);
+        let action = if i % 2 == 0 {white_player.action(&state)} else {black_player.action(&state)};
+        state.execute(structure, action);
         i += 1;
     }
     // println!("{:?}", i);
     return state;
-}*/
+}

@@ -1,8 +1,9 @@
 #[cfg(test)]
+use game;
 use game::{GameStructure, VictoryState, PlayerColor};
 use ai;
-use ai::{run_match};
-use constants::{LINES};
+use ai::run_match;
+use constants::LINES;
 use std::rc::Rc;
 
 #[test]
@@ -32,12 +33,33 @@ fn match_tree() {
 }
 
 #[test]
-fn game_structure_size() {
-    let structure = Rc::new(GameStructure::new(&LINES));
-    assert_eq!(structure.points.len(), 4*4*4);
-    let mut i = 0;
-    for p in &structure.points {
-        assert_eq!(p.flat_coordinate, i);
-        i += 1;
+fn subset_coherence() {
+    // This is a property based test, see QuickCheck for more information.
+    use rand::{thread_rng, Rng};
+
+    let mut rng = thread_rng();
+
+    for _ in 0..10000 {
+        // Ensure that all positions returned by the Subset iterator are
+        // contained in the Subset.
+        let subset = game::Subset(rng.next_u64());
+        for position in subset.iter() {
+            println!("{:?}", position);
+            assert!(subset.contains(position));
+        }
     }
+}
+
+#[test]
+fn easy_judgement_values() {
+    let structure = game::GameStructure::new(&LINES);
+
+    let mut state = game::State::new();
+    assert_eq!(0, ai::tree::easy_judgement(&structure, &state, game::PlayerColor::White));
+
+    state.insert(&structure, game::Position2::new(0, 0));
+    assert_eq!(7, ai::tree::easy_judgement(&structure, &state, game::PlayerColor::White));
+
+    state.insert(&structure, game::Position2::new(0, 3));
+    assert_eq!(0, ai::tree::easy_judgement(&structure, &state, game::PlayerColor::White));
 }

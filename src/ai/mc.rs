@@ -5,7 +5,7 @@ use game;
 use game::{Action, GameStructure, PlayerColor, VictoryState, VictoryStats};
 
 use std::rc::Rc;
-use rand::{thread_rng, Rng, Rand};
+use rand::{thread_rng, Rng};
 
 
 // Pure Monte Carlo AI

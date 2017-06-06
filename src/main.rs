@@ -62,8 +62,6 @@ fn parse_command_line_input<'clap>() -> clap::ArgMatches<'clap> {
 }
 
 fn interactive() {
-    test();
-
     let ui_connector = ui::UiConnector::new();
 
     let structure = Rc::new(GameStructure::new(&LINES));
@@ -113,33 +111,4 @@ fn ai_turn<A: StatelessAI>(ui_connector: &ui::UiConnector,
     let color = state.current_color;
     state.execute(&structure, action);
     ui_connector.confirmed_action(action, color).unwrap();
-}
-
-
-fn test() {
-    // TODO: Move this into ./tests
-    // This can also be a property based test.
-    // Ensure that all positions returned by the Subset iterator are
-    // contained in the Subset.
-    let subset = game::Subset(33825);
-    for position in subset.iter() {
-        println!("{:?}", position);
-        assert!(subset.contains(position));
-    }
-
-
-    // TODO: Move this into ./tests
-    let structure = game::GameStructure::new(&LINES);
-    let mut state = game::State::new();
-
-    assert!(0 == ai::tree::easy_judgement(&structure, &state, game::PlayerColor::White));
-
-    state.insert(&structure, game::Position2::new(0, 0));
-
-    assert!(7 == ai::tree::easy_judgement(&structure, &state, game::PlayerColor::White));
-
-    state.insert(&structure, game::Position2::new(0, 3));
-
-    assert!(0 == ai::tree::easy_judgement(&structure, &state, game::PlayerColor::White));
-
 }

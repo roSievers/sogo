@@ -1,5 +1,4 @@
 use std::ops::{AddAssign, Not};
-use helpers::EqualityVerifier;
 
 // The two dimensional position is a number between 0 and 15,
 // the three dimensional position is a number between 0 and 63.
@@ -44,6 +43,9 @@ impl From<Position3> for Position2 {
 }
 
 impl Subset {
+    #[allow(dead_code)]
+    // This is used by the tests and in general a nice function to have
+    // around.
     pub fn contains(self, position: Position3) -> bool {
         (self.0 >> position.0) % 2 == 1
     }
@@ -181,42 +183,6 @@ pub enum LineState {
     Win(PlayerColor),
 }
 
-impl LineState {
-    fn add_ball_functional(line_state: LineState,
-                           new_color: PlayerColor,
-                           max_size: i8)
-                           -> LineState {
-        match line_state {
-            LineState::Empty => {
-                LineState::Pure {
-                    color: new_color,
-                    count: 1,
-                }
-            }
-            LineState::Pure {
-                color: current_color,
-                count: old_count,
-            } => {
-                if current_color != new_color {
-                    LineState::Mixed
-                } else {
-                    if old_count == max_size - 1 {
-                        LineState::Win(current_color)
-                    } else {
-                        LineState::Pure {
-                            color: current_color,
-                            count: old_count + 1,
-                        }
-                    }
-                }
-            }
-            LineState::Mixed => LineState::Mixed,
-            LineState::Win(_) => panic!("A filled line can't accept any more balls."),
-        }
-    }
-}
-
-
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum VictoryState {
     Undecided,
@@ -225,13 +191,6 @@ pub enum VictoryState {
 }
 
 impl VictoryState {
-    pub fn as_float(&self, perspective: PlayerColor) -> f32 {
-        match *self {
-            VictoryState::Undecided => 0.5,
-            VictoryState::Draw => 0.5,
-            VictoryState::Win(color) => if color == perspective { 1.0 } else { 0.0 },
-        }
-    }
     pub fn active(&self) -> bool {
         match *self {
             VictoryState::Undecided => true,

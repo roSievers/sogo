@@ -13,7 +13,6 @@ pub enum CoreEvent {
 
 #[derive(Clone, Debug)]
 pub enum UiEvent {
-    EmptyEvent,
     StartTurn,
     GameOver(VictoryState),
     RenderAction { action : Action, color : PlayerColor },

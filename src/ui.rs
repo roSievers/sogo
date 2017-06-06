@@ -10,13 +10,12 @@ use std::rc::Rc;
 use std::thread;
 use std::sync::mpsc::{channel, Sender, Receiver};
 
-use na::{Vector3, Point3, Point2, Translation3};
+use na::{Point3, Point2, Translation3};
 use glfw;
 use glfw::{Action, MouseButton, WindowEvent, Key};
 use kiss3d::window::Window;
 use kiss3d::light::Light;
-use kiss3d::camera::{ArcBall, Camera};
-use kiss3d::scene::SceneNode;
+use kiss3d::camera::{ArcBall};
 
 enum UiState {
     WaitingForPlayerMove,
