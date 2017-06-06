@@ -2,11 +2,11 @@
 use ai::StatelessAI;
 
 use game;
-use game::{Action, GameStructure, PlayerColor, LineState};
+use game::{Action, PlayerColor, LineState};
 use std::rc::Rc;
 
 
-pub fn easy_judgement(structure: &GameStructure,
+pub fn easy_judgement(structure: &game::Structure,
                       state: &game::State,
                       my_color: PlayerColor)
                       -> i32 {
@@ -27,7 +27,7 @@ pub fn easy_judgement(structure: &GameStructure,
     score
 }
 
-pub fn recursive_judgement(structure: &GameStructure,
+pub fn recursive_judgement(structure: &game::Structure,
                            state: &game::State,
                            my_color: PlayerColor,
                            depth: i8)
@@ -54,13 +54,13 @@ pub fn recursive_judgement(structure: &GameStructure,
 
 #[allow(dead_code)]
 pub struct TreeJudgementAI {
-    structure: Rc<game::GameStructure>,
+    structure: Rc<game::Structure>,
     search_depth: i8,
 }
 
 #[allow(dead_code)]
 impl TreeJudgementAI {
-    pub fn new(structure: Rc<GameStructure>, depth: i8) -> TreeJudgementAI {
+    pub fn new(structure: Rc<game::Structure>, depth: i8) -> TreeJudgementAI {
         TreeJudgementAI {
             structure: structure,
             search_depth: depth,

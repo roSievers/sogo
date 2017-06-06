@@ -10,7 +10,7 @@ pub struct Position2(u8);
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Position3(u8);
 
-// Used for the GameStructure. This is a [bool; 64] in disguise.
+// Used for the Structure. This is a [bool; 64] in disguise.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Subset(pub u64);
 
@@ -218,7 +218,7 @@ impl VictoryStats {
 }
 
 
-pub struct GameStructure {
+pub struct Structure {
     // A vector of all Subsets, complete one to win the game.
     pub source: Vec<Subset>,
     // Contains a lookup table, given a Position3, this returns a vector of indices.
@@ -230,8 +230,8 @@ pub struct GameStructure {
     //victory_object_size: i8,
 }
 
-impl GameStructure {
-    pub fn new(victory_objects: &[u64]) -> GameStructure {
+impl Structure {
+    pub fn new(victory_objects: &[u64]) -> Structure {
         // Convert raw u64 into Subset objects. (Which are u64 with extra structure.)
         let source: Vec<Subset> = victory_objects.iter().map(|v| Subset(*v)).collect();
         // Unfortunately, [vec![]; 64] does not work :-/
@@ -250,7 +250,7 @@ impl GameStructure {
             }
         }
 
-        GameStructure {
+        Structure {
             source,
             reverse,
             //victory_object_count: victory_objects.len(),
@@ -282,14 +282,14 @@ impl State {
     fn at(&self, position: Position3) -> PointState {
         self.points[position.0 as usize]
     }
-    pub fn execute(&mut self, structure: &GameStructure, action: Action) {
+    pub fn execute(&mut self, structure: &Structure, action: Action) {
         match action {
             Action::Surrender => self.victory_state = VictoryState::Win(!self.current_color),
             Action::Play(position) => self.insert(structure, position),
         }
     }
     // Panics, if the column is already full.
-    pub fn insert(&mut self, structure: &GameStructure, column: Position2) {
+    pub fn insert(&mut self, structure: &Structure, column: Position2) {
         let position = {
             let z = self.column_height.get_mut(column.0 as usize).unwrap();
             let position = column.with_height(*z);
@@ -301,7 +301,7 @@ impl State {
         self.update_victory_state(structure, position);
         self.current_color = !self.current_color;
     }
-    fn update_victory_state(&mut self, structure: &GameStructure, position: Position3) {
+    fn update_victory_state(&mut self, structure: &Structure, position: Position3) {
         for subset_index in structure.reverse[position.0 as usize].iter() {
             if structure.source[*subset_index]
                    .iter()

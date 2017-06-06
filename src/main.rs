@@ -21,7 +21,6 @@ extern crate nalgebra as na;
 
 extern crate rand;
 
-use game::GameStructure;
 use ai::StatelessAI;
 use constants::LINES; //, PARALLELOGRAMS, PLUSSES};
 use std::rc::Rc;
@@ -64,7 +63,7 @@ fn parse_command_line_input<'clap>() -> clap::ArgMatches<'clap> {
 fn interactive() {
     let ui_connector = ui::UiConnector::new();
 
-    let structure = Rc::new(GameStructure::new(&LINES));
+    let structure = Rc::new(game::Structure::new(&LINES));
 
     let mut p2 = ai::tree::TreeJudgementAI::new(structure.clone(), 2);
     // let mut p2 = ai::mc::MonteCarloAI::new(structure.clone(), 10000);
@@ -92,7 +91,7 @@ fn interactive() {
     }
 }
 
-fn user_turn(ui_connector: &ui::UiConnector, state: &mut game::State, structure: &GameStructure) {
+fn user_turn(ui_connector: &ui::UiConnector, state: &mut game::State, structure: &game::Structure) {
     // Wait for the player to make the first action
     let action = ui_connector.wait_for_action().unwrap();
 
@@ -104,7 +103,7 @@ fn user_turn(ui_connector: &ui::UiConnector, state: &mut game::State, structure:
 fn ai_turn<A: StatelessAI>(ui_connector: &ui::UiConnector,
                            ai: &mut A,
                            state: &mut game::State,
-                           structure: &GameStructure) {
+                           structure: &game::Structure) {
     // Let the AI take one action
     let action = ai.action(&state);
 

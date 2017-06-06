@@ -1,6 +1,6 @@
 #[cfg(test)]
 use game;
-use game::{GameStructure, VictoryState, PlayerColor};
+use game::{VictoryState, PlayerColor};
 use ai;
 use ai::run_match;
 use constants::LINES;
@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 #[test]
 fn match_mc() {
-    let structure = Rc::new(GameStructure::new(&LINES));
+    let structure = Rc::new(game::Structure::new(&LINES));
     let mut white_player = ai::mc::MonteCarloAI::new(structure.clone(), 1000);
     let mut black_player = ai::mc::MonteCarloAI::new(structure.clone(), 1000);
     run_match(&structure, &mut white_player, &mut black_player);
@@ -16,7 +16,7 @@ fn match_mc() {
 
 #[test]
 fn match_mc_tree() {
-    let structure = Rc::new(GameStructure::new(&LINES));
+    let structure = Rc::new(game::Structure::new(&LINES));
     let mut white_player = ai::mc::MonteCarloAI::new(structure.clone(), 1000);
     let mut black_player = ai::tree::TreeJudgementAI::new(structure.clone(), 2);
     run_match(&structure, &mut white_player, &mut black_player);
@@ -24,7 +24,7 @@ fn match_mc_tree() {
 
 #[test]
 fn match_tree() {
-    let structure = Rc::new(GameStructure::new(&LINES));
+    let structure = Rc::new(game::Structure::new(&LINES));
     let mut white_player = ai::tree::TreeJudgementAI::new(structure.clone(), 2);
     let mut black_player = ai::tree::TreeJudgementAI::new(structure.clone(), 2);
     let result = run_match(&structure, &mut white_player, &mut black_player);
@@ -52,7 +52,7 @@ fn subset_coherence() {
 
 #[test]
 fn easy_judgement_values() {
-    let structure = game::GameStructure::new(&LINES);
+    let structure = game::Structure::new(&LINES);
 
     let mut state = game::State::new();
     assert_eq!(0, ai::tree::easy_judgement(&structure, &state, game::PlayerColor::White));

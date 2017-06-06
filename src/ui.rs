@@ -1,6 +1,6 @@
 
 use game_view;
-use game::{GameStructure, Position2};
+use game::Position2;
 use game;
 use thread_synchronisation::{CoreEvent, UiEvent};
 use constants::LINES; //, PARALLELOGRAMS, PLUSSES};
@@ -98,7 +98,7 @@ impl UiConnector {
 
 
 pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
-    let structure = Rc::new(GameStructure::new(&LINES));
+    let structure = Rc::new(game::Structure::new(&LINES));
     // let mut state = GameState::new(&structure);
     let mut game_state = game::State::new();
     //let mut history = ActionHistory::new();
@@ -197,7 +197,7 @@ impl ActionHistory {
     /// Creates a new GameState from scratch and applies all recorded actions up to current_time.
     /// This is in contrast to the 3D spheres which are individually created and removed.
     /// This function does not affect the graphical output at all.
-    fn game_state(&self, structure: &GameStructure) -> GameState {
+    fn game_state(&self, structure: &game::Structure) -> GameState {
         let mut state = GameState::new(structure);
         for time in 0..self.actions.len() {
             if time >= self.current_time {

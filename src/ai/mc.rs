@@ -2,7 +2,7 @@
 use ai::StatelessAI;
 
 use game;
-use game::{Action, GameStructure, PlayerColor, VictoryState, VictoryStats};
+use game::{Action, PlayerColor, VictoryState, VictoryStats};
 
 use std::rc::Rc;
 use rand::{thread_rng, Rng};
@@ -15,12 +15,12 @@ use rand::{thread_rng, Rng};
 #[allow(dead_code)]
 pub struct MonteCarloAI {
     endurance: i32, // How many random games am I allowed to play each turn?
-    structure: Rc<GameStructure>,
+    structure: Rc<game::Structure>,
 }
 
 #[allow(dead_code)]
 impl MonteCarloAI {
-    pub fn new(structure: Rc<GameStructure>, endurance: i32) -> MonteCarloAI {
+    pub fn new(structure: Rc<game::Structure>, endurance: i32) -> MonteCarloAI {
         MonteCarloAI {
             endurance: endurance,
             structure: structure,
@@ -54,7 +54,7 @@ impl StatelessAI for MonteCarloAI {
     }
 }
 
-fn monte_carlo_judgement(structure: &GameStructure,
+fn monte_carlo_judgement(structure: &game::Structure,
                          state: &game::State,
                          my_color: PlayerColor,
                          amount: i32)
@@ -68,7 +68,7 @@ fn monte_carlo_judgement(structure: &GameStructure,
 }
 
 
-pub fn random_playout(structure: &GameStructure, state: &game::State) -> VictoryState {
+pub fn random_playout(structure: &game::Structure, state: &game::State) -> VictoryState {
     let mut my_state = state.clone();
     let mut rng = thread_rng();
     while my_state.victory_state == VictoryState::Undecided {
@@ -82,7 +82,7 @@ pub fn random_playout(structure: &GameStructure, state: &game::State) -> Victory
 }
 
 
-pub fn random_playout_sample(structure: &GameStructure,
+pub fn random_playout_sample(structure: &game::Structure,
                              state: &game::State,
                              number: i32)
                              -> VictoryStats {

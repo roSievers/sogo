@@ -36,7 +36,7 @@ pub trait StatelessAI {
 // This is required for the test code.
 // Will also be required for the batch code.
 pub fn run_match<T : StatelessAI, U : StatelessAI>(
-        structure : &game::GameStructure, white_player : &mut T, black_player : &mut U)
+        structure : &game::Structure, white_player : &mut T, black_player : &mut U)
         -> game::State {
     let mut i = 0;
 
