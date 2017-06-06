@@ -7,6 +7,18 @@ I plan to implement a version where you try to score "Six in a parallelogram" in
     > cargo build --release
     > ./target/release/sogo
 
-# UI
+# Running
 
-The 3D interface for human players is written using [Kiss3D](https://github.com/sebcrozet/kiss3d).
+Executing just `sogo` drops you in a match agains a default AI. You can specify
+the AI you want to play agains with the `-p` parameter. Currently there are
+the following options:
+
+    > -p random
+    > -p mc <endurance>
+    > -p tree <depth>
+
+Sensible values are `-p mc 16000` and `-p tree 3`.
+
+You can also run many AI vs AI matches using the `batch` subcommand.
+Here `-p` and `-q` specify the white and black players as above and `-n`
+specifies how many matches you want to play out.
