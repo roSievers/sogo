@@ -30,10 +30,27 @@ fn main() {
 
     if let Some(batch_matches) = matches.subcommand_matches("batch") {
         println!("Batch mode isn't implemented yet.");
+        println!("Arguments: {:?}", batch_matches);
         return;
     }
 
-    interactive();
+    let ai_parameter_result = matches
+        .values_of("player2ai")
+        .map(ai_parser)
+        .unwrap_or(Ok(ai::Constructor::MonteCarlo { endurance: 1000 }));
+
+    let ai_parameter = match ai_parameter_result {
+        Ok(param) => param,
+        Err(error) => {
+            println!("Faulty AI specified: {}", error);
+            return;
+        }
+    };
+
+    let structure = Rc::new(game::Structure::new(&LINES));
+    let player_2_ai = ai::AIBox::new(structure.clone(), ai_parameter);
+
+    interactive(structure, player_2_ai);
 }
 
 fn parse_command_line_input<'clap>() -> clap::ArgMatches<'clap> {
@@ -52,20 +69,50 @@ fn parse_command_line_input<'clap>() -> clap::ArgMatches<'clap> {
                  .default_value("1")
                  .validator(validate_integer));
 
+    let p2_ai = Arg::with_name("player2ai")
+        .short("p")
+        .long("player")
+        .help("Specify which AI you want to play against.")
+        .min_values(1);
+
     App::new("Sogo - Play four in a row.")
         .version("0.0.1")
         .author("Rolf Sievers <rolf.sievers@posteo.de>")
         .about("UI and AIs for Sogo.")
         .subcommand(batch_run)
+        .arg(p2_ai)
         .get_matches()
 }
 
-fn interactive() {
+
+fn ai_parser(mut values: clap::Values) -> Result<ai::Constructor, String> {
+    let ai_name: &str = values.next().unwrap();
+    match ai_name {
+        "random" => Ok(ai::Constructor::Random),
+        "mc" => {
+            let endurance = values
+                .next()
+                .unwrap_or("10000")
+                .parse::<usize>()
+                .map_err(|_| "The endurance needs to be a number.")?;
+            Ok(ai::Constructor::MonteCarlo { endurance })
+        }
+        "tree" => {
+            let depth = values
+                .next()
+                .unwrap_or("2")
+                .parse::<u8>()
+                .map_err(|_| "The depth needs to be a number.")?;
+            Ok(ai::Constructor::Tree { depth })
+        }
+        _ => Err("AI not recognized.")?,
+    }
+}
+
+fn interactive(structure: Rc<game::Structure>, mut p2: ai::AIBox) {
     let ui_connector = ui::UiConnector::new();
 
-    let structure = Rc::new(game::Structure::new(&LINES));
-
-    let mut p2 = ai::tree::TreeJudgementAI::new(structure.clone(), 2);
+    // let mut p2 = ai::tree::TreeJudgementAI::new(structure.clone(), 2);
     // let mut p2 = ai::mc::MonteCarloAI::new(structure.clone(), 10000);
     // let mut p2 = ai::random::RandomSogoAI::new();
 
@@ -91,7 +138,9 @@ fn interactive() {
     }
 }
 
-fn user_turn(ui_connector: &ui::UiConnector, state: &mut game::State, structure: &game::Structure) {
+fn user_turn(ui_connector: &ui::UiConnector,
+             state: &mut game::State,
+             structure: &game::Structure) {
     // Wait for the player to make the first action
     let action = ui_connector.wait_for_action().unwrap();
 

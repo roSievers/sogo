@@ -7,6 +7,51 @@ pub mod tree; //FIXME
 
 use game;
 use game::{Action};
+use std::rc::Rc;
+
+// I should first focus on stateless AIs. The current AIs are all stateless
+// and I shouldn't have to deal with the extra baggage.
+pub trait StatelessAI {
+    fn action(&self, state: &game::State) -> Action;
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Constructor {
+    Random,
+    MonteCarlo { endurance: usize },
+    Tree { depth: u8 },
+}
+
+pub enum AIBox {
+    Random(random::RandomSogoAI),
+    MC(mc::MonteCarloAI),
+    Tree(tree::TreeJudgementAI),
+}
+
+impl AIBox {
+    pub fn new(structure: Rc<game::Structure>, ai_parameter: Constructor) -> AIBox {
+        match ai_parameter {
+            Constructor::Random => AIBox::Random(random::RandomSogoAI::new()),
+            Constructor::MonteCarlo { endurance } => {
+                AIBox::MC(mc::MonteCarloAI::new(structure.clone(), endurance as i32))
+            }
+            Constructor::Tree { depth } => {
+                // TODO: Migrate TreeJudgementAI to depth : u8.
+                AIBox::Tree(tree::TreeJudgementAI::new(structure.clone(), depth as i8))
+            }
+        }
+    }
+}
+
+impl StatelessAI for AIBox {
+    fn action(&self, state: &game::State) -> Action {
+        match self {
+            &AIBox::Random(ref ai) => ai.action(state),
+            &AIBox::MC(ref ai) => ai.action(state),
+            &AIBox::Tree(ref ai) => ai.action(state),
+        }
+    }
+}
 
 /*pub trait SogoAI {
     fn reset_game(&mut self);
@@ -17,11 +62,6 @@ use game::{Action};
         // An imutable reference to the game_state is passed for convenience only.
 }*/
 
-// I should first focus on stateless AIs. The current AIs are all stateless
-// and I shouldn't have to deal with the extra baggage.
-pub trait StatelessAI {
-    fn action(&self, state: &game::State) -> Action;
-}
 
 /*impl<Ai: StatelessAI> SogoAI for Ai {
     fn reset_game(&mut self) {}
