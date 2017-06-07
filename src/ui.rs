@@ -10,16 +10,17 @@ use std::rc::Rc;
 use std::thread;
 use std::sync::mpsc::{channel, Sender, Receiver};
 
-use na::{Point3, Point2, Translation3};
+use na::Point3;
 use glfw;
 use glfw::{Action, MouseButton, WindowEvent, Key};
 use kiss3d::window::Window;
 use kiss3d::light::Light;
-use kiss3d::camera::{ArcBall};
+use kiss3d::camera::ArcBall;
 
+#[derive(PartialEq, Eq)]
 enum UiState {
-    WaitingForPlayerMove,
-    WaitingForAiMove,
+    Waiting,
+    Input,
     GameOver,
 }
 
@@ -94,6 +95,21 @@ impl UiConnector {
             .unwrap();
         Ok(())
     }
+    pub fn wait_for_halt(&self) -> () {
+        // Blocks the thread until the user submits an action or quits.
+        if let Ok(event) = self.receiver.recv() {
+            match event {
+                CoreEvent::Halt => (),
+                remainder => {
+                    println!("UI returned an event after the game finished: {:?}", remainder);
+                    self.wait_for_halt()
+                }
+            }
+        } else {
+            ()
+        }
+
+    }
 }
 
 
@@ -107,6 +123,8 @@ pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
 
     let mut window = prepare_window();
     let mut camera = prepare_camera();
+
+    let mut ui_state = UiState::Waiting;
 
     window.scene_mut().add_child(game_view::prepare_board());
 
@@ -125,6 +143,9 @@ pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
                     game_state.execute(&structure, action);
                     // history.add(action, new_piece);
                 }
+                UiEvent::StartTurn => {
+                    ui_state = UiState::Input;
+                }
                 remainder => println!("Unhandled thread event in UI: {:?}.", remainder),
             }
         }
@@ -133,23 +154,28 @@ pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
         for event in window.events().iter() {
             match event.value {
                 WindowEvent::CursorPos(x, y) => {
-                    let placement_candidate =
-                        game_view::placement_coordinate(&window, &camera, (x, y));
-                    view_state.placement_hint(window.scene_mut(),
-                                              game_state.current_color,
-                                              placement_candidate);
+                    if ui_state == UiState::Input {
+                        let placement_candidate =
+                            game_view::placement_coordinate(&window, &camera, (x, y));
+                        view_state.placement_hint(window.scene_mut(),
+                                                  game_state.current_color,
+                                                  placement_candidate);
+                    }
                 }
                 WindowEvent::MouseButton(MouseButton::Button1, Action::Release, _) => {
-                    if let Some((x_value, z_value)) = view_state.placement_position() {
-                        // Is placing a piece allowed?
-                        if game_state.column_height[(x_value + 4 * z_value) as usize] <= 3 {
-                            let action = Position2::new(x_value as u8, z_value as u8).into();
-                            core_sender
-                                .send(CoreEvent::Action {
-                                          action: action,
-                                          color: game_state.current_color,
-                                      })
-                                .unwrap();
+                    if ui_state == UiState::Input {
+                        if let Some((x_value, z_value)) = view_state.placement_position() {
+                            // Is placing a piece allowed?
+                            if game_state.column_height[(x_value + 4 * z_value) as usize] <= 3 {
+                                let action = Position2::new(x_value as u8, z_value as u8).into();
+                                core_sender
+                                    .send(CoreEvent::Action {
+                                              action: action,
+                                              color: game_state.current_color,
+                                          })
+                                    .unwrap();
+                            }
+                            ui_state = UiState::Waiting;
                         }
                     }
                 }
