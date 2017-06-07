@@ -3,7 +3,6 @@ mod tests;
 
 mod game;
 mod ai;
-mod tree_expand_ai;
 mod ui;
 mod game_view;
 mod constants;
