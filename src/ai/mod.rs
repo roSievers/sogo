@@ -33,11 +33,10 @@ impl AIBox {
         match ai_parameter {
             Constructor::Random => AIBox::Random(random::RandomSogoAI::new()),
             Constructor::MonteCarlo { endurance } => {
-                AIBox::MC(mc::MonteCarloAI::new(structure.clone(), endurance as i32))
+                AIBox::MC(mc::MonteCarloAI::new(structure.clone(), endurance))
             }
             Constructor::Tree { depth } => {
-                // TODO: Migrate TreeJudgementAI to depth : u8.
-                AIBox::Tree(tree::TreeJudgementAI::new(structure.clone(), depth as i8))
+                AIBox::Tree(tree::TreeJudgementAI::new(structure.clone(), depth))
             }
         }
     }

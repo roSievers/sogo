@@ -14,13 +14,13 @@ use rand::{thread_rng, Rng};
 // about the value of each action.
 #[allow(dead_code)]
 pub struct MonteCarloAI {
-    endurance: i32, // How many random games am I allowed to play each turn?
+    endurance: usize, // How many random games am I allowed to play each turn?
     structure: Rc<game::Structure>,
 }
 
 #[allow(dead_code)]
 impl MonteCarloAI {
-    pub fn new(structure: Rc<game::Structure>, endurance: i32) -> MonteCarloAI {
+    pub fn new(structure: Rc<game::Structure>, endurance: usize) -> MonteCarloAI {
         MonteCarloAI {
             endurance: endurance,
             structure: structure,
@@ -32,7 +32,7 @@ impl StatelessAI for MonteCarloAI {
     fn action(&self, state: &game::State) -> Action {
         let my_color = state.current_color;
         let legal_actions : Vec<Action> = state.legal_actions().collect();
-        let endurance_per_action = self.endurance / (legal_actions.len() as i32);
+        let endurance_per_action = self.endurance / (legal_actions.len() as usize);
 
         // Each action is judged by running a certain number of random matches.
         // The action with the best win ratio is selected.
@@ -57,7 +57,7 @@ impl StatelessAI for MonteCarloAI {
 fn monte_carlo_judgement(structure: &game::Structure,
                          state: &game::State,
                          my_color: PlayerColor,
-                         amount: i32)
+                         amount: usize)
                          -> i32 {
     let stats = random_playout_sample(structure, state, amount);
     if my_color == PlayerColor::White {
@@ -84,7 +84,7 @@ pub fn random_playout(structure: &game::Structure, state: &game::State) -> Victo
 
 pub fn random_playout_sample(structure: &game::Structure,
                              state: &game::State,
-                             number: i32)
+                             number: usize)
                              -> VictoryStats {
     let mut statics = game::VictoryStats::new();
     for _ in 0..number {

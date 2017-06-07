@@ -13,6 +13,8 @@ use std::sync::mpsc::{channel, Sender, Receiver};
 use na::Point3;
 use glfw;
 use glfw::{Action, MouseButton, WindowEvent, Key};
+// TODO: Find a better, stateless 3D option than this.
+// Being able to place text would be amazing as well.
 use kiss3d::window::Window;
 use kiss3d::light::Light;
 use kiss3d::camera::ArcBall;

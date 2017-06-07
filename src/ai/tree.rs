@@ -30,7 +30,7 @@ pub fn easy_judgement(structure: &game::Structure,
 pub fn recursive_judgement(structure: &game::Structure,
                            state: &game::State,
                            my_color: PlayerColor,
-                           depth: i8)
+                           depth: u8)
                            -> i32 {
     if depth == 0 {
         easy_judgement(structure, state, my_color)
@@ -55,12 +55,12 @@ pub fn recursive_judgement(structure: &game::Structure,
 #[allow(dead_code)]
 pub struct TreeJudgementAI {
     structure: Rc<game::Structure>,
-    search_depth: i8,
+    search_depth: u8,
 }
 
 #[allow(dead_code)]
 impl TreeJudgementAI {
-    pub fn new(structure: Rc<game::Structure>, depth: i8) -> TreeJudgementAI {
+    pub fn new(structure: Rc<game::Structure>, depth: u8) -> TreeJudgementAI {
         TreeJudgementAI {
             structure: structure,
             search_depth: depth,
