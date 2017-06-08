@@ -50,9 +50,12 @@ fn main() {
     }
 
     if let Some(batch_matches) = matches.subcommand_matches("batch") {
-
         batch(batch_matches).unwrap();
+        return;
+    }
 
+    if let Some(demo_matches) = matches.subcommand_matches("demo") {
+        demo(demo_matches).unwrap();
         return;
     }
 
@@ -81,6 +84,17 @@ fn parse_command_line_input<'clap>() -> clap::ArgMatches<'clap> {
         Err(_) => Err("Needs to be an integer.".to_owned()),
     };
 
+    let ai_1 = || Arg::with_name("ai1")
+             .short("p")
+             .required(true)
+             .help("Specify first AI.")
+             .min_values(1);
+    let ai_2 = || Arg::with_name("ai2")
+             .short("q")
+             .required(true)
+             .help("Specify second AI.")
+             .min_values(1);
+
     let batch_run = SubCommand::with_name("batch")
         .about("Executes many AI matches at once.")
         .arg(Arg::with_name("count")
@@ -90,16 +104,13 @@ fn parse_command_line_input<'clap>() -> clap::ArgMatches<'clap> {
                  .takes_value(true)
                  .default_value("1")
                  .validator(validate_integer))
-        .arg(Arg::with_name("ai1")
-                 .short("p")
-                 .required(true)
-                 .help("Specify first AI.")
-                 .min_values(1))
-        .arg(Arg::with_name("ai2")
-                 .short("q")
-                 .required(true)
-                 .help("Specify second AI.")
-                 .min_values(1));
+        .arg(ai_1())
+        .arg(ai_2());
+
+    let demo_match = SubCommand::with_name("demo")
+        .about("Demonstration match with two AIs")
+        .arg(ai_1())
+        .arg(ai_2());
 
     let opponent = Arg::with_name("opponent")
         .short("p")
@@ -112,6 +123,7 @@ fn parse_command_line_input<'clap>() -> clap::ArgMatches<'clap> {
         .author("Rolf Sievers <rolf.sievers@posteo.de>")
         .about("UI and AIs for Sogo.")
         .subcommand(batch_run)
+        .subcommand(demo_match)
         .arg(opponent)
         .get_matches()
 }
@@ -149,10 +161,6 @@ fn ai_parser(mut values: clap::Values) -> Result<ai::Constructor, String> {
 
 fn interactive(structure: Rc<game::Structure>, mut p2: ai::AIBox) {
     let ui_connector = ui::UiConnector::new();
-
-    // let mut p2 = ai::tree::TreeJudgementAI::new(structure.clone(), 2);
-    // let mut p2 = ai::mc::MonteCarloAI::new(structure.clone(), 10000);
-    // let mut p2 = ai::random::RandomSogoAI::new();
 
     // Run a game, this should look synchronous.
     let mut state = game::State::new();
@@ -201,4 +209,38 @@ fn ai_turn<A: StatelessAI>(ui_connector: &ui::UiConnector,
     let color = state.current_color;
     state.execute(&structure, action);
     ui_connector.confirmed_action(action, color).unwrap();
+}
+
+
+// This is simmilar to interactive, but the player isn't allowed to do any moves.
+fn demo(arguments: &clap::ArgMatches) -> Result<(), String> {
+    let ai1_params = arguments.values_of("ai1").map(ai_parser).unwrap()?;
+    let ai2_params = arguments.values_of("ai2").map(ai_parser).unwrap()?;
+
+    let structure = Rc::new(game::Structure::new(&LINES));
+
+    let mut active_ai = ai::AIBox::new(structure.clone(), ai1_params);
+    let mut waiting_ai = ai::AIBox::new(structure.clone(), ai2_params);
+
+    let ui_connector = ui::UiConnector::new();
+
+    let mut state = game::State::new();
+
+    loop {
+        ai_turn(&ui_connector, &mut active_ai, &mut state, &structure);
+
+        // Check for victory.
+        if !state.victory_state.active() {
+            ui_connector.game_over(state.victory_state);
+            ui_connector.wait_for_halt();
+            break;
+        }
+
+        // Swap AIs.
+        let temp = active_ai;
+        active_ai = waiting_ai;
+        waiting_ai = temp;
+    }
+
+    Ok(())
 }
