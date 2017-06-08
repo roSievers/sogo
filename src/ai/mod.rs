@@ -20,7 +20,7 @@ pub trait StatelessAI {
 pub enum Constructor {
     Random,
     MonteCarlo { endurance: usize },
-    Tree { depth: u8 },
+    Tree { depth: u8, value_function: value::Simple },
 }
 
 pub enum AIBox {
@@ -36,8 +36,8 @@ impl AIBox {
             Constructor::MonteCarlo { endurance } => {
                 AIBox::MC(mc::MonteCarloAI::new(structure.clone(), endurance))
             }
-            Constructor::Tree { depth } => {
-                AIBox::Tree(tree::TreeJudgementAI::new(structure.clone(), depth))
+            Constructor::Tree { depth, value_function } => {
+                AIBox::Tree(tree::TreeJudgementAI::new(structure.clone(), depth, value_function))
             }
         }
     }

@@ -135,7 +135,13 @@ fn ai_parser(mut values: clap::Values) -> Result<ai::Constructor, String> {
                 .unwrap_or("2")
                 .parse::<u8>()
                 .map_err(|_| "The depth needs to be a number.")?;
-            Ok(ai::Constructor::Tree { depth })
+
+            let value_function = values
+                .next()
+                .unwrap_or("subsets")
+                .parse::<ai::value::Simple>()
+                .map_err(|_| "Invalid value function provided.")?;
+            Ok(ai::Constructor::Tree { depth, value_function })
         }
         _ => Err("AI not recognized.")?,
     }
