@@ -72,7 +72,10 @@ impl Subset {
         } else if stats.color == None {
             LineState::Empty
         } else {
-            LineState::Pure { color: stats.color.unwrap(), count: stats.objects as i8 }
+            LineState::Pure {
+                color: stats.color.unwrap(),
+                count: stats.objects as i8,
+            }
         }
     }
 }
@@ -93,7 +96,11 @@ impl AddAssign<PointState> for SubsetStats {
                 self.objects += 1;
                 match self.color {
                     None => self.color = Some(color),
-                    Some(new_color) => if color != new_color { self.mixed = true},
+                    Some(new_color) => {
+                        if color != new_color {
+                            self.mixed = true
+                        }
+                    }
                 }
             }
         }
@@ -186,7 +193,10 @@ pub enum LineState {
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum VictoryState {
     Undecided,
-    Win(PlayerColor),
+    Win {
+        winner: PlayerColor,
+        reason: Option<Subset>,
+    },
     Draw,
 }
 
@@ -289,7 +299,12 @@ impl State {
     }
     pub fn execute(&mut self, structure: &Structure, action: Action) {
         match action {
-            Action::Surrender => self.victory_state = VictoryState::Win(!self.current_color),
+            Action::Surrender => {
+                self.victory_state = VictoryState::Win {
+                    winner: !self.current_color,
+                    reason: None,
+                }
+            }
             Action::Play(position) => self.insert(structure, position),
         }
     }
@@ -308,10 +323,14 @@ impl State {
     }
     fn update_victory_state(&mut self, structure: &Structure, position: Position3) {
         for subset_index in structure.reverse[position.0 as usize].iter() {
-            if structure.source[*subset_index]
+            let subset = structure.source[*subset_index];
+            if subset
                    .iter()
                    .all(|pos2| self.at(pos2) == PointState::Piece(self.current_color)) {
-                self.victory_state = VictoryState::Win(self.current_color);
+                self.victory_state = VictoryState::Win {
+                    winner: self.current_color,
+                    reason: Some(subset),
+                };
                 return;
             }
         }

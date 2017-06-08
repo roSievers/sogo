@@ -157,6 +157,7 @@ fn interactive(structure: Rc<game::Structure>, mut p2: ai::AIBox) {
         // Check for victory.
         if !state.victory_state.active() {
             println!("The Human has won the game.");
+            ui_connector.game_over(state.victory_state);
             ui_connector.wait_for_halt();
             break;
         }
@@ -166,6 +167,7 @@ fn interactive(structure: Rc<game::Structure>, mut p2: ai::AIBox) {
         // Check for victory.
         if !state.victory_state.active() {
             println!("The AI has won the game.");
+            ui_connector.game_over(state.victory_state);
             ui_connector.wait_for_halt();
             break;
         }

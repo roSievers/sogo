@@ -23,7 +23,7 @@ use kiss3d::camera::ArcBall;
 enum UiState {
     Waiting,
     Input,
-    GameOver,
+    GameOver(game::VictoryState),
 }
 
 fn prepare_window() -> Window {
@@ -78,7 +78,7 @@ impl UiConnector {
                     println!("UI debug output: {}", text);
                     self.wait_for_action()
                 }
-                CoreEvent::Action { action, color } => Ok(action),
+                CoreEvent::Action { action, .. } => Ok(action),
                 CoreEvent::Halt => Err("Application window signaled 'Halt'.".to_owned()),
             }
         } else {
@@ -97,7 +97,10 @@ impl UiConnector {
             .unwrap();
         Ok(())
     }
-    pub fn wait_for_halt(&self) -> () {
+    pub fn game_over(&self, victory_state: game::VictoryState) {
+        self.sender.send(UiEvent::GameOver(victory_state)).unwrap();
+    }
+    pub fn wait_for_halt(&self) {
         // Blocks the thread until the user submits an action or quits.
         if let Ok(event) = self.receiver.recv() {
             match event {
@@ -144,11 +147,13 @@ pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
                                                          color);
                     game_state.execute(&structure, action);
                     // history.add(action, new_piece);
-                }
+                },
                 UiEvent::StartTurn => {
                     ui_state = UiState::Input;
-                }
-                remainder => println!("Unhandled thread event in UI: {:?}.", remainder),
+                },
+                UiEvent::GameOver(victory_state) => {
+                    ui_state = UiState::GameOver(victory_state);
+                },
             }
         }
 

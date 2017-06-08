@@ -31,7 +31,7 @@ impl MonteCarloAI {
 impl StatelessAI for MonteCarloAI {
     fn action(&self, state: &game::State) -> Action {
         let my_color = state.current_color;
-        let legal_actions : Vec<Action> = state.legal_actions().collect();
+        let legal_actions: Vec<Action> = state.legal_actions().collect();
         let endurance_per_action = self.endurance / (legal_actions.len() as usize);
 
         // Each action is judged by running a certain number of random matches.
@@ -39,14 +39,14 @@ impl StatelessAI for MonteCarloAI {
         let (&best_action, _) = legal_actions
             .iter()
             .map(|action| {
-                     let mut new_state = state.clone();
-                     new_state.execute(&self.structure, *action);
-                     let value = monte_carlo_judgement(&self.structure,
-                                                       &new_state,
-                                                       my_color,
-                                                       endurance_per_action);
-                     (action, value)
-                 })
+                let mut new_state = state.clone();
+                new_state.execute(&self.structure, *action);
+                let value = monte_carlo_judgement(&self.structure,
+                                                  &new_state,
+                                                  my_color,
+                                                  endurance_per_action);
+                (action, value)
+            })
             .max_by_key(|&(_, value)| value)
             .unwrap();
 
@@ -73,9 +73,8 @@ pub fn random_playout(structure: &game::Structure, state: &game::State) -> Victo
     let mut rng = thread_rng();
     while my_state.victory_state == VictoryState::Undecided {
         let surrender = Action::Surrender;
-        let legal_actions : Vec<Action> = my_state.legal_actions().collect();
-        let action = rng.choose(&legal_actions)
-            .unwrap_or(&surrender);
+        let legal_actions: Vec<Action> = my_state.legal_actions().collect();
+        let action = rng.choose(&legal_actions).unwrap_or(&surrender);
         my_state.execute(structure, *action);
     }
     my_state.victory_state
@@ -90,13 +89,17 @@ pub fn random_playout_sample(structure: &game::Structure,
     for _ in 0..number {
         let result = random_playout(&structure, &state);
         match result {
-            game::VictoryState::Win(game::PlayerColor::White) => statics.white += 1,
-            game::VictoryState::Win(game::PlayerColor::Black) => statics.black += 1,
+            game::VictoryState::Win { winner, .. } => {
+                match winner {
+                    game::PlayerColor::White => statics.white += 1,
+                    game::PlayerColor::Black => statics.black += 1,
+                }
+            },
             game::VictoryState::Draw => statics.draws += 1,
             game::VictoryState::Undecided => {
                 panic!("The game_state should never be undecided after a random playout.")
             }
         }
     }
-    return statics;
+    statics
 }
