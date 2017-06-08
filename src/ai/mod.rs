@@ -90,3 +90,28 @@ pub fn run_match<T : StatelessAI, U : StatelessAI>(
     // println!("{:?}", i);
     return state;
 }
+
+
+// To make the gameplay more interesting, the AI should chose a random best move
+// instead of a deterministic one.
+fn random_best_move<T: Iterator<Item=(Action, i32)>>(mut tuples: T) -> Action {
+    use rand::{thread_rng, Rng};
+
+    let (initial_action, initial_value) = tuples.next().unwrap();
+
+    let mut best_actions = vec!(initial_action);
+    let mut best_value = initial_value;
+
+    while let Some((action, value)) = tuples.next() {
+        if value < best_value {
+            continue;
+        } else if value == best_value {
+            best_actions.push(action);
+        } else {
+            best_actions = vec!(action);
+            best_value = value;
+        }
+    }
+
+    *thread_rng().choose(&best_actions).unwrap()
+}

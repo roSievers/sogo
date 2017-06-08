@@ -27,13 +27,7 @@ fn match_tree() {
     let structure = Rc::new(game::Structure::new(&LINES));
     let mut white_player = ai::tree::TreeJudgementAI::new(structure.clone(), 2, ai::value::Simple::Subsets);
     let mut black_player = ai::tree::TreeJudgementAI::new(structure.clone(), 2, ai::value::Simple::Subsets);
-    let result = run_match(&structure, &mut white_player, &mut black_player);
-    // As the TreeJudgementAI is deterministic, the same player wins all the time.
-    if let VictoryState::Win {winner, ..} = result.victory_state {
-        assert_eq!(winner, PlayerColor::Black);
-    } else {
-        panic!("After playing the match, there should be a winner. (Black in this case.)");
-    }
+    run_match(&structure, &mut white_player, &mut black_player);
 }
 
 #[test]

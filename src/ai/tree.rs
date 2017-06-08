@@ -1,4 +1,5 @@
 
+use ai;
 use ai::value;
 use ai::StatelessAI;
 
@@ -60,7 +61,7 @@ impl StatelessAI for TreeJudgementAI {
     fn action(&self, state: &game::State) -> Action {
         let my_color = state.current_color;
 
-        let (best_action, best_value) = state
+        let graded_actions = state
             .legal_actions()
             .map(|action| {
                 let mut new_state = state.clone();
@@ -71,12 +72,8 @@ impl StatelessAI for TreeJudgementAI {
                                                 self.search_depth - 1,
                                                 self.value_function);
                 (action, value)
-            })
-            .max_by_key(|&(_, value)| value)
-            .unwrap();
+            });
 
-        // println!("Executing {:?} with value {}.", best_action, best_value);
-
-        best_action
+        ai::random_best_move(graded_actions)
     }
 }
