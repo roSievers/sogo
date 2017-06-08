@@ -29,7 +29,11 @@ fn match_tree() {
     let mut black_player = ai::tree::TreeJudgementAI::new(structure.clone(), 2);
     let result = run_match(&structure, &mut white_player, &mut black_player);
     // As the TreeJudgementAI is deterministic, the same player wins all the time.
-    assert_eq!(result.victory_state, VictoryState::Win(PlayerColor::Black));
+    if let VictoryState::Win {winner, ..} = result.victory_state {
+        assert_eq!(winner, PlayerColor::Black);
+    } else {
+        panic!("After playing the match, there should be a winner. (Black in this case.)");
+    }
 }
 
 #[test]
@@ -48,18 +52,4 @@ fn subset_coherence() {
             assert!(subset.contains(position));
         }
     }
-}
-
-#[test]
-fn easy_judgement_values() {
-    let structure = game::Structure::new(&LINES);
-
-    let mut state = game::State::new();
-    assert_eq!(0, ai::tree::easy_judgement(&structure, &state, game::PlayerColor::White));
-
-    state.insert(&structure, game::Position2::new(0, 0));
-    assert_eq!(7, ai::tree::easy_judgement(&structure, &state, game::PlayerColor::White));
-
-    state.insert(&structure, game::Position2::new(0, 3));
-    assert_eq!(0, ai::tree::easy_judgement(&structure, &state, game::PlayerColor::White));
 }

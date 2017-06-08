@@ -3,7 +3,8 @@
 
 pub mod random;
 pub mod mc;
-pub mod tree; //FIXME
+pub mod tree;
+pub mod value;
 
 use game;
 use game::{Action};

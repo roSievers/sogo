@@ -1,39 +1,19 @@
 
+use ai::value;
 use ai::StatelessAI;
 
 use game;
-use game::{Action, PlayerColor, LineState};
+use game::{Action, PlayerColor};
 use std::rc::Rc;
 
-
-pub fn easy_judgement(structure: &game::Structure,
-                      state: &game::State,
-                      my_color: PlayerColor)
-                      -> i32 {
-    let mut score = 0;
-
-    for subset in &structure.source {
-        score += match subset.win_state(state) {
-            LineState::Empty => 0,
-            LineState::Win(color) => 1000 * (if color == my_color { 1 } else { -1 }),
-            // If I'm still allowed to play, that must have been my win.
-            LineState::Mixed => 0,
-            LineState::Pure { color, count } => {
-                (count * count * (if color == my_color { 1 } else { -1 })) as i32
-            }
-        }
-    }
-
-    score
-}
 
 pub fn recursive_judgement(structure: &game::Structure,
                            state: &game::State,
                            my_color: PlayerColor,
                            depth: u8)
                            -> i32 {
-    if depth == 0 {
-        easy_judgement(structure, state, my_color)
+    if depth == 0 || !state.victory_state.active() {
+        value::subsets(structure, state, my_color)
     } else {
         let values = state
             .legal_actions()
@@ -48,7 +28,7 @@ pub fn recursive_judgement(structure: &game::Structure,
             values.max()
         } else {
             values.min()
-        }.unwrap_or_else(|| easy_judgement(structure, state, my_color))
+        }.unwrap()
     }
 }
 
