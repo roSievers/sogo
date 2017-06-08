@@ -5,10 +5,10 @@ use std::ops::{AddAssign, Not};
 //
 // But still, they should be differentiated and the type system must track this.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Position2(u8);
+pub struct Position2(pub u8);
 // Position3 is also known as FlatCoordinate in "legacy" code.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Position3(u8);
+pub struct Position3(pub u8);
 
 // Used for the Structure. This is a [bool; 64] in disguise.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -236,7 +236,7 @@ pub struct Structure {
     pub reverse: [Vec<usize>; 64],
     // The size of a victory object. While not technically necessary, having
     // uniform victory objects seems like a reasonable restriction.
-    object_size: u8,
+    pub object_size: u8,
 }
 
 impl Structure {
@@ -294,7 +294,7 @@ impl State {
             column_height: [0; 16],
         }
     }
-    fn at(&self, position: Position3) -> PointState {
+    pub fn at(&self, position: Position3) -> PointState {
         self.points[position.0 as usize]
     }
     pub fn execute(&mut self, structure: &Structure, action: Action) {
