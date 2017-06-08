@@ -224,14 +224,15 @@ pub struct Structure {
     // Contains a lookup table, given a Position3, this returns a vector of indices.
     // The indices tell you which Subsets contain the Position3.
     pub reverse: [Vec<usize>; 64],
-    //pub points: Vec<Point>,
-    //victory_object_count: usize,
-    // All victory objects need to be of the same size. This is an implementation restriction.
-    //victory_object_size: i8,
+    // The size of a victory object. While not technically necessary, having
+    // uniform victory objects seems like a reasonable restriction.
+    object_size: u8,
 }
 
 impl Structure {
     pub fn new(victory_objects: &[u64]) -> Structure {
+        use helpers::EqualityVerifier;
+
         // Convert raw u64 into Subset objects. (Which are u64 with extra structure.)
         let source: Vec<Subset> = victory_objects.iter().map(|v| Subset(*v)).collect();
         // Unfortunately, [vec![]; 64] does not work :-/
@@ -244,17 +245,21 @@ impl Structure {
                            vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![],
                            vec![]];
 
+        let mut object_size = EqualityVerifier::NoValue;
+
         for (index, subset) in source.iter().enumerate() {
+            let mut subset_size = 0;
             for position in subset.iter() {
                 reverse[position.0 as usize].push(index);
+                subset_size += 1;
             }
+            object_size = object_size.update(subset_size);
         }
 
         Structure {
             source,
             reverse,
-            //victory_object_count: victory_objects.len(),
-            //victory_object_size: object_count.unwrap(),
+            object_size: object_size.unwrap(),
         }
     }
 }
