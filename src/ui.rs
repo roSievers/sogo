@@ -5,6 +5,7 @@ use game;
 use thread_synchronisation::{CoreEvent, UiEvent};
 use constants::LINES; //, PARALLELOGRAMS, PLUSSES};
 use std::rc::Rc;
+use replay;
 
 // Thread Communication
 use std::thread;
@@ -106,7 +107,8 @@ impl UiConnector {
             match event {
                 CoreEvent::Halt => (),
                 remainder => {
-                    println!("UI returned an event after the game finished: {:?}", remainder);
+                    println!("UI returned an event after the game finished: {:?}",
+                             remainder);
                     self.wait_for_halt()
                 }
             }
@@ -120,9 +122,7 @@ impl UiConnector {
 
 pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
     let structure = Rc::new(game::Structure::new(&LINES));
-    // let mut state = GameState::new(&structure);
-    let mut game_state = game::State::new();
-    //let mut history = ActionHistory::new();
+    let mut replay = replay::History::new();
 
     let mut view_state = game_view::State::empty();
 
@@ -139,21 +139,21 @@ pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
             match event {
                 UiEvent::RenderAction { action, color } => {
                     let (x, z) = action.unwrap().coords();
-                    let height = game_state.column_height[(x + 4 * z) as usize];
-                    let new_piece = game_view::add_piece(window.scene_mut(),
-                                                         x as i32,
-                                                         height as i32,
-                                                         z as i32,
-                                                         color);
-                    game_state.execute(&structure, action);
+                    let height = replay.state.column_height[(x + 4 * z) as usize];
+                    game_view::add_piece(window.scene_mut(),
+                                         x as i32,
+                                         height as i32,
+                                         z as i32,
+                                         color);
+                    replay.add(&structure, action);
                     // history.add(action, new_piece);
-                },
+                }
                 UiEvent::StartTurn => {
                     ui_state = UiState::Input;
-                },
+                }
                 UiEvent::GameOver(victory_state) => {
                     ui_state = UiState::GameOver(victory_state);
-                },
+                }
             }
         }
 
@@ -165,7 +165,7 @@ pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
                         let placement_candidate =
                             game_view::placement_coordinate(&window, &camera, (x, y));
                         view_state.placement_hint(window.scene_mut(),
-                                                  game_state.current_color,
+                                                  replay.state.current_color,
                                                   placement_candidate);
                     }
                 }
@@ -173,12 +173,12 @@ pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
                     if ui_state == UiState::Input {
                         if let Some((x_value, z_value)) = view_state.placement_position() {
                             // Is placing a piece allowed?
-                            if game_state.column_height[(x_value + 4 * z_value) as usize] <= 3 {
+                            if replay.state.column_height[(x_value + 4 * z_value) as usize] <= 3 {
                                 let action = Position2::new(x_value as u8, z_value as u8).into();
                                 core_sender
                                     .send(CoreEvent::Action {
                                               action: action,
-                                              color: game_state.current_color,
+                                              color: replay.state.current_color,
                                           })
                                     .unwrap();
                             }
@@ -200,60 +200,3 @@ pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
     }
     core_sender.send(CoreEvent::Halt).unwrap();
 }
-
-/*
-struct ActionHistory {
-    actions: Vec<(game::Action, SceneNode)>,
-    // The current times is the amount of actions passed.
-    // I.e. actions[current_time] is not executed and may not exist.
-    // The current_time should never be larger than actions.len().
-    current_time: usize,
-}
-
-impl ActionHistory {
-    fn new() -> ActionHistory {
-        ActionHistory {
-            actions: Vec::new(),
-            current_time: 0,
-        }
-    }
-    /// Adds a new action to the ActionHistory.
-    /// Stored actions after current_time are discarded.
-    fn add(&mut self, action: game::Action, node: SceneNode) {
-        while self.actions.len() > self.current_time {
-            // The old nodes are already unlinked from their parents (not displayed).
-            self.actions.pop();
-        }
-        self.actions.push((action, node));
-        self.current_time += 1;
-    }
-    /// Creates a new GameState from scratch and applies all recorded actions up to current_time.
-    /// This is in contrast to the 3D spheres which are individually created and removed.
-    /// This function does not affect the graphical output at all.
-    fn game_state(&self, structure: &game::Structure) -> GameState {
-        let mut state = GameState::new(structure);
-        for time in 0..self.actions.len() {
-            if time >= self.current_time {
-                break;
-            }
-            state.execute_action(structure, &self.actions[time].0);
-        }
-        state
-    }
-    fn undo(&mut self) {
-        if self.current_time > 0 {
-            self.current_time -= 1;
-            self.actions[self.current_time].1.unlink();
-        }
-    }
-    // The redo function need a SceneNode while the undo function doesn't because we need to know
-    // the parent in order to relink the sphere. Unlink works without.
-    fn redo(&mut self, scene: &mut SceneNode) {
-        if self.current_time < self.actions.len() {
-            // The Scene Node contains data: Rc<RefCell<SceneNodeData>>, so cloning it does just
-            // return a new reference to the same data.
-            scene.add_child(self.actions[self.current_time].1.clone());
-            self.current_time += 1;
-        }
-    }
-}*/

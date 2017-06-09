@@ -8,6 +8,7 @@ mod game_view;
 mod constants;
 mod helpers;
 mod thread_synchronisation;
+mod replay;
 
 // Command line argument parser
 extern crate clap;
