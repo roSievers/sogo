@@ -54,14 +54,21 @@ impl History {
             for i in current_count..self.actions.len() {
                 self.state.execute(self.actions[i]);
             }
+            self.playback_count = None;
         } else {
             // We aren't in history playback mode so resuming doesn't do anything.
             return;
         }
     }
+    pub fn is_resumed(&self) -> bool {
+        self.playback_count.is_none()
+    }
     pub fn playback(&self) -> HistoryPlayback {
+        let max_index = self.playback_count.unwrap_or(self.actions.len());
+
         HistoryPlayback {
             index : 0,
+            max_index,
             actions: &self.actions,
             state: game::State::new(self.state.structure.clone()),
         }
@@ -70,6 +77,7 @@ impl History {
 
 pub struct HistoryPlayback<'a> {
     index: usize,
+    max_index: usize,
     actions: &'a Vec<game::Action>,
     state: game::State,
 }
@@ -77,13 +85,15 @@ pub struct HistoryPlayback<'a> {
 impl<'a> Iterator for HistoryPlayback<'a> {
     type Item = (game::Position3, game::Color);
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(action) = self.actions.get(self.index) {
+        if self.index >= self.max_index {
+            None
+        } else if let Some(action) = self.actions.get(self.index) {
             let color = self.state.current_color;
             let position = self.state.insert(action.unwrap());
             self.index += 1;
             Some((position, color))
         } else {
-            None
+             panic!("The precondition should prevent large indices!")
         }
     }
 }

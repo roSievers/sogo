@@ -18,7 +18,7 @@ const BALL_DIAMMETER: f32 = 0.6;
 const PLATE_HEIGHT: f32 = 0.4;
 const ROD_LENGTH: f32 = 3.6; // In units of pieces.
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum Phase {
     Waiting,
     Input,

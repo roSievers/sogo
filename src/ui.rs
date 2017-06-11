@@ -141,38 +141,47 @@ pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
         for event in window.events().iter() {
             match event.value {
                 WindowEvent::CursorPos(x, y) => {
-                    if view_state.phase == Phase::Input {
+                    if view_state.phase == Phase::Input && view_state.replay.is_resumed() {
                         let placement_candidate =
                             game_view::placement_coordinate(&window, &camera, (x, y));
                         view_state.hint = placement_candidate;
                     }
                 }
                 WindowEvent::MouseButton(MouseButton::Button1, Action::Release, _) => {
-                    if view_state.phase == Phase::Input {
-                        if let Some(position) = view_state.hint {
-                            view_state.hint = None;
-                            // Is placing a piece allowed?
-                            if view_state.replay.state.column_height[position.0 as usize] <= 3 {
-                                let action = position.into();
-                                core_sender
-                                    .send(CoreEvent::Action {
-                                              action: action,
-                                              color: view_state.replay.state.current_color,
-                                          })
-                                    .unwrap();
-                            }
-                            view_state.phase = Phase::Waiting;
+                    if let Some(position) = view_state.hint {
+                        assert_eq!(view_state.phase, Phase::Input);
+                        view_state.hint = None;
+                        // Is placing a piece allowed?
+                        if view_state.replay.state.column_height[position.0 as usize] <= 3 {
+                            let action = position.into();
+                            core_sender
+                                .send(CoreEvent::Action {
+                                          action: action,
+                                          color: view_state.replay.state.current_color,
+                                      })
+                                .unwrap();
                         }
+                        view_state.phase = Phase::Waiting;
+
                     }
                 }
-                /*WindowEvent::Key(Key::Left, _, Action::Release, _) => {
-                    history.undo();
-                    state = history.game_state(&structure);
+                WindowEvent::Key(Key::Left, _, Action::Release, _) => {
+                    let result = view_state.replay.back();
+                    view_state.hint = None;
+                    if result.is_err() {
+                        // TODO: play an error sound.
+                    }
                 }
                 WindowEvent::Key(Key::Right, _, Action::Release, _) => {
-                    history.redo(window.scene_mut());
-                    state = history.game_state(&structure);
-                }*/
+                    let result = view_state.replay.forward();
+                    view_state.hint = None;
+                    if result.is_err() {
+                        // TODO: play an error sound.
+                    }
+                }
+                WindowEvent::Key(Key::Space, _, Action::Release, _) => {
+                    view_state.replay.resume();
+                }
                 _ => {}
             }
         }
