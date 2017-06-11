@@ -81,7 +81,7 @@ impl UiConnector {
     }
     pub fn confirmed_action(&self,
                             action: game::Action,
-                            color: game::PlayerColor)
+                            color: game::Color)
                             -> Result<(), String> {
         self.sender
             .send(UiEvent::RenderAction {

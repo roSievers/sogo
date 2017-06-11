@@ -75,7 +75,7 @@ pub struct HistoryPlayback<'a> {
 }
 
 impl<'a> Iterator for HistoryPlayback<'a> {
-    type Item = (game::Position3, game::PlayerColor);
+    type Item = (game::Position3, game::Color);
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(action) = self.actions.get(self.index) {
             let color = self.state.current_color;

@@ -1,6 +1,6 @@
 #[cfg(test)]
 use game;
-use game::{VictoryState, PlayerColor};
+use game::VictoryState;
 use ai;
 use ai::run_match;
 use constants::LINES;
@@ -11,23 +11,26 @@ fn match_mc() {
     let structure = Rc::new(game::Structure::new(&LINES));
     let mut white_player = ai::mc::MonteCarloAI::new(structure.clone(), 1000);
     let mut black_player = ai::mc::MonteCarloAI::new(structure.clone(), 1000);
-    run_match(&structure, &mut white_player, &mut black_player);
+    run_match(structure, &mut white_player, &mut black_player);
 }
 
 #[test]
 fn match_mc_tree() {
     let structure = Rc::new(game::Structure::new(&LINES));
     let mut white_player = ai::mc::MonteCarloAI::new(structure.clone(), 1000);
-    let mut black_player = ai::tree::TreeJudgementAI::new(structure.clone(), 2, ai::value::Simple::Subsets);
-    run_match(&structure, &mut white_player, &mut black_player);
+    let mut black_player =
+        ai::tree::TreeJudgementAI::new(structure.clone(), 2, ai::value::Simple::Subsets);
+    run_match(structure, &mut white_player, &mut black_player);
 }
 
 #[test]
 fn match_tree() {
     let structure = Rc::new(game::Structure::new(&LINES));
-    let mut white_player = ai::tree::TreeJudgementAI::new(structure.clone(), 2, ai::value::Simple::Subsets);
-    let mut black_player = ai::tree::TreeJudgementAI::new(structure.clone(), 2, ai::value::Simple::Subsets);
-    run_match(&structure, &mut white_player, &mut black_player);
+    let mut white_player =
+        ai::tree::TreeJudgementAI::new(structure.clone(), 2, ai::value::Simple::Subsets);
+    let mut black_player =
+        ai::tree::TreeJudgementAI::new(structure.clone(), 2, ai::value::Simple::Subsets);
+    run_match(structure, &mut white_player, &mut black_player);
 }
 
 #[test]

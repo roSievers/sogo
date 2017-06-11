@@ -2,7 +2,7 @@
 use ai::StatelessAI;
 
 use game;
-use game::{Action, PlayerColor, VictoryState, VictoryStats};
+use game::{Action, VictoryState, VictoryStats};
 
 use std::rc::Rc;
 use rand::{thread_rng, Rng};
@@ -54,11 +54,11 @@ impl StatelessAI for MonteCarloAI {
 }
 
 fn monte_carlo_judgement(state: &game::State,
-                         my_color: PlayerColor,
+                         my_color: game::Color,
                          amount: usize)
                          -> i32 {
     let stats = random_playout_sample(state, amount);
-    if my_color == PlayerColor::White {
+    if my_color == game::Color::White {
         return stats.white - stats.black;
     } else {
         return stats.black - stats.white;
@@ -88,8 +88,8 @@ pub fn random_playout_sample(state: &game::State,
         match result {
             game::VictoryState::Win { winner, .. } => {
                 match winner {
-                    game::PlayerColor::White => statics.white += 1,
-                    game::PlayerColor::Black => statics.black += 1,
+                    game::Color::White => statics.white += 1,
+                    game::Color::Black => statics.black += 1,
                 }
             },
             game::VictoryState::Draw => statics.draws += 1,

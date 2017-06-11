@@ -3,7 +3,7 @@
 use std::str::FromStr;
 
 use game;
-use game::{PlayerColor, LineState, Position3, Position2};
+use game::{LineState, Position3, Position2};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Simple {
@@ -14,7 +14,7 @@ pub enum Simple {
 impl Simple {
     pub fn value_of(self,
                     state: &game::State,
-                    my_color: PlayerColor)
+                    my_color: game::Color)
                     -> i32 {
         match self {
             Simple::Subsets => subsets(state, my_color),
@@ -38,7 +38,7 @@ impl FromStr for Simple {
 // One piece on a line => 1 Point
 // Two pieces on a line => 4 Points
 // Three pieces on a line => 9 Points
-pub fn subsets(state: &game::State, my_color: PlayerColor) -> i32 {
+pub fn subsets(state: &game::State, my_color: game::Color) -> i32 {
     if let game::VictoryState::Win { winner, .. } = state.victory_state {
         if winner == my_color {
             return 1000;
@@ -72,12 +72,13 @@ pub fn subsets(state: &game::State, my_color: PlayerColor) -> i32 {
 #[test]
 fn test_subsets_values() {
     use game::{Structure, State, Position2};
-    use game::PlayerColor::White;
+    use game::Color::White;
+    use std::rc::Rc;
     use constants::LINES;
 
     let structure = Structure::new(&LINES);
 
-    let mut state = State::new();
+    let mut state = State::new(Rc::new(structure));
     assert_eq!(0, subsets(&state, White));
 
     state.insert(Position2::new(0, 0));
@@ -88,7 +89,7 @@ fn test_subsets_values() {
 }
 
 // This value function only checks if you won the game already.
-pub fn win_only(state: &game::State, my_color: PlayerColor) -> i32 {
+pub fn win_only(state: &game::State, my_color: game::Color) -> i32 {
     if let game::VictoryState::Win { winner, .. } = state.victory_state {
         if winner == my_color {
             return 1;
@@ -122,7 +123,7 @@ enum SideValue {
 fn point_value(state: &game::State,
                position: Position3)
                -> Option<(SideValue, SideValue)> {
-    use game::PlayerColor::White;
+    use game::Color::White;
 
     // This is only defined for empty positions.
     if let game::PointState::Piece(_) = state.at(position) {

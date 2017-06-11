@@ -86,7 +86,7 @@ impl Subset {
 
 #[derive(Debug)]
 struct SubsetStats {
-    color: Option<PlayerColor>,
+    color: Option<Color>,
     objects: u8,
     full: bool,
     mixed: bool,
@@ -139,19 +139,19 @@ impl Iterator for SubsetIterator {
 }
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
-pub enum PlayerColor {
+pub enum Color {
     White,
     Black,
 }
 
-// This implementation allows PlayerColor::White == !PlayerColor::Black.
-impl Not for PlayerColor {
-    type Output = PlayerColor;
+// This implementation allows Color::White == !Color::Black.
+impl Not for Color {
+    type Output = Color;
 
-    fn not(self) -> PlayerColor {
+    fn not(self) -> Color {
         match self {
-            PlayerColor::White => PlayerColor::Black,
-            PlayerColor::Black => PlayerColor::White,
+            Color::White => Color::Black,
+            Color::Black => Color::White,
         }
     }
 }
@@ -181,7 +181,7 @@ impl From<Position2> for Action {
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum PointState {
-    Piece(PlayerColor),
+    Piece(Color),
     Empty,
 }
 
@@ -189,16 +189,16 @@ pub enum PointState {
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum LineState {
     Empty,
-    Pure { color: PlayerColor, count: i8 },
+    Pure { color: Color, count: i8 },
     Mixed,
-    Win(PlayerColor),
+    Win(Color),
 }
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum VictoryState {
     Undecided,
     Win {
-        winner: PlayerColor,
+        winner: Color,
         reason: Option<Subset>,
     },
     Draw,
@@ -280,7 +280,7 @@ impl Structure {
 
 pub struct State {
     pub points: [PointState; 64],
-    pub current_color: PlayerColor,
+    pub current_color: Color,
     pub age: u8, // How many actions were played?
     // Everything below here is cached information.
     pub victory_state: VictoryState,
@@ -293,7 +293,7 @@ impl State {
     pub fn new(structure: Rc<Structure>) -> Self {
         State {
             points: [PointState::Empty; 64],
-            current_color: PlayerColor::White,
+            current_color: Color::White,
             age: 0,
             victory_state: VictoryState::Undecided,
             column_height: [0; 16],
@@ -332,7 +332,7 @@ impl State {
         self.current_color = !self.current_color;
         position
     }
-    fn update_victory_state(&mut self, position: Position3, color: PlayerColor) {
+    fn update_victory_state(&mut self, position: Position3, color: Color) {
         for subset_index in self.structure.reverse[position.0 as usize].iter() {
             let subset = self.structure.source[*subset_index];
             if subset

@@ -11,7 +11,7 @@ use kiss3d::camera::{ArcBall, Camera};
 use std::rc::Rc;
 
 use game;
-use game::{PlayerColor, Position2};
+use game::Position2;
 use replay::History;
 
 const BALL_DIAMMETER: f32 = 0.6;
@@ -74,14 +74,14 @@ pub fn prepare_board() -> SceneNode {
 }
 
 /// Creates a new 3D gamepiece and places it at the supplied position.
-pub fn add_hint(scene: &mut SceneNode, position: Position2, color: PlayerColor) -> SceneNode {
+pub fn add_hint(scene: &mut SceneNode, position: Position2, color: game::Color) -> SceneNode {
     let (x, z) = position.coords();
     let mut piece = scene.add_sphere(BALL_DIAMMETER / 2.0);
     piece.append_translation(&Translation3::from_vector(piece_position(x as i32, 0, z as i32)));
     piece.append_translation(&Translation3::new(0.0, BALL_DIAMMETER * ROD_LENGTH, 0.0));
     match color {
-        PlayerColor::White => piece.set_color(1.0, 1.0, 1.0),
-        PlayerColor::Black => piece.set_color(0.0, 0.0, 0.0),
+        game::Color::White => piece.set_color(1.0, 1.0, 1.0),
+        game::Color::Black => piece.set_color(0.0, 0.0, 0.0),
     }
 
     piece
@@ -124,8 +124,8 @@ pub fn render(target: &mut SceneNode, state: &State) {
                                                                            z as i32,
                                                                            y as i32)));
         match color {
-            PlayerColor::White => piece.set_color(1.0, 1.0, 1.0),
-            PlayerColor::Black => piece.set_color(0.0, 0.0, 0.0),
+            game::Color::White => piece.set_color(1.0, 1.0, 1.0),
+            game::Color::Black => piece.set_color(0.0, 0.0, 0.0),
         }
     }
 

@@ -4,12 +4,12 @@ use ai::value;
 use ai::StatelessAI;
 
 use game;
-use game::{Action, PlayerColor};
+use game::Action;
 use std::rc::Rc;
 
 
 pub fn recursive_judgement(state: &game::State,
-                           my_color: PlayerColor,
+                           my_color: game::Color,
                            depth: u8,
                            value_function: value::Simple)
                            -> i32 {
