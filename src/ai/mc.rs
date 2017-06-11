@@ -40,9 +40,8 @@ impl StatelessAI for MonteCarloAI {
             .iter()
             .map(|action| {
                 let mut new_state = state.clone();
-                new_state.execute(&self.structure, *action);
-                let value = monte_carlo_judgement(&self.structure,
-                                                  &new_state,
+                new_state.execute(*action);
+                let value = monte_carlo_judgement(&new_state,
                                                   my_color,
                                                   endurance_per_action);
                 (action, value)
@@ -54,12 +53,11 @@ impl StatelessAI for MonteCarloAI {
     }
 }
 
-fn monte_carlo_judgement(structure: &game::Structure,
-                         state: &game::State,
+fn monte_carlo_judgement(state: &game::State,
                          my_color: PlayerColor,
                          amount: usize)
                          -> i32 {
-    let stats = random_playout_sample(structure, state, amount);
+    let stats = random_playout_sample(state, amount);
     if my_color == PlayerColor::White {
         return stats.white - stats.black;
     } else {
@@ -68,26 +66,25 @@ fn monte_carlo_judgement(structure: &game::Structure,
 }
 
 
-pub fn random_playout(structure: &game::Structure, state: &game::State) -> VictoryState {
+pub fn random_playout(state: &game::State) -> VictoryState {
     let mut my_state = state.clone();
     let mut rng = thread_rng();
     while my_state.victory_state == VictoryState::Undecided {
         let surrender = Action::Surrender;
         let legal_actions: Vec<Action> = my_state.legal_actions().collect();
         let action = rng.choose(&legal_actions).unwrap_or(&surrender);
-        my_state.execute(structure, *action);
+        my_state.execute(*action);
     }
     my_state.victory_state
 }
 
 
-pub fn random_playout_sample(structure: &game::Structure,
-                             state: &game::State,
+pub fn random_playout_sample(state: &game::State,
                              number: usize)
                              -> VictoryStats {
     let mut statics = game::VictoryStats::new();
     for _ in 0..number {
-        let result = random_playout(&structure, &state);
+        let result = random_playout(&state);
         match result {
             game::VictoryState::Win { winner, .. } => {
                 match winner {

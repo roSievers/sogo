@@ -13,12 +13,11 @@ pub enum Simple {
 
 impl Simple {
     pub fn value_of(self,
-                    structure: &game::Structure,
                     state: &game::State,
                     my_color: PlayerColor)
                     -> i32 {
         match self {
-            Simple::Subsets => subsets(structure, state, my_color),
+            Simple::Subsets => subsets(state, my_color),
             Simple::WinOnly => win_only(state, my_color),
         }
     }
@@ -39,7 +38,7 @@ impl FromStr for Simple {
 // One piece on a line => 1 Point
 // Two pieces on a line => 4 Points
 // Three pieces on a line => 9 Points
-pub fn subsets(structure: &game::Structure, state: &game::State, my_color: PlayerColor) -> i32 {
+pub fn subsets(state: &game::State, my_color: PlayerColor) -> i32 {
     if let game::VictoryState::Win { winner, .. } = state.victory_state {
         if winner == my_color {
             return 1000;
@@ -50,7 +49,7 @@ pub fn subsets(structure: &game::Structure, state: &game::State, my_color: Playe
 
     let mut score = 0;
 
-    for subset in &structure.source {
+    for subset in &state.structure.source {
         score += match subset.win_state(state) {
             LineState::Empty => 0,
             LineState::Mixed => 0,
@@ -79,13 +78,13 @@ fn test_subsets_values() {
     let structure = Structure::new(&LINES);
 
     let mut state = State::new();
-    assert_eq!(0, subsets(&structure, &state, White));
+    assert_eq!(0, subsets(&state, White));
 
-    state.insert(&structure, Position2::new(0, 0));
-    assert_eq!(7, subsets(&structure, &state, White));
+    state.insert(Position2::new(0, 0));
+    assert_eq!(7, subsets(&state, White));
 
-    state.insert(&structure, Position2::new(0, 3));
-    assert_eq!(0, subsets(&structure, &state, White));
+    state.insert(Position2::new(0, 3));
+    assert_eq!(0, subsets(&state, White));
 }
 
 // This value function only checks if you won the game already.
@@ -120,8 +119,7 @@ enum SideValue {
 
 // Calculates the point value for White and Black.
 #[allow(dead_code)]
-fn point_value(structure: &game::Structure,
-               state: &game::State,
+fn point_value(state: &game::State,
                position: Position3)
                -> Option<(SideValue, SideValue)> {
     use game::PlayerColor::White;
@@ -136,8 +134,8 @@ fn point_value(structure: &game::Structure,
     let mut last_white_piece = false;
     let mut last_black_piece = false;
 
-    for subset_index in &structure.reverse[position.0 as usize] {
-        let subset = structure.source[*subset_index];
+    for subset_index in &state.structure.reverse[position.0 as usize] {
+        let subset = state.structure.source[*subset_index];
         let win_state = subset.win_state(state);
         match win_state {
             game::LineState::Empty => {
@@ -146,7 +144,7 @@ fn point_value(structure: &game::Structure,
             }
             game::LineState::Pure { color, count } => {
                 let total_count = count as i32 + 1;
-                if total_count == structure.object_size as i32 {
+                if total_count == state.structure.object_size as i32 {
                     if color == White {
                         last_white_piece = true;
                     } else {
@@ -185,8 +183,7 @@ fn point_value(structure: &game::Structure,
 
 // Is this column worth playing at?
 #[allow(dead_code)]
-fn column_value(structure: &game::Structure,
-                state: &game::State,
+fn column_value(state: &game::State,
                 position: Position2)
                 -> Option<(SideValue, SideValue)> {
     use self::SideValue::{LastMissingPiece, Heuristic, DirectLoss};
@@ -194,12 +191,12 @@ fn column_value(structure: &game::Structure,
 
     match height {
         4 => None,
-        3 => point_value(structure, state, position.with_height(3)),
+        3 => point_value(state, position.with_height(3)),
         h => {
             let (white_placement_value, black_placement_value) =
-                point_value(structure, state, position.with_height(h)).unwrap();
+                point_value(state, position.with_height(h)).unwrap();
             let (white_response_value, black_response_value) =
-                point_value(structure, state, position.with_height(h + 1)).unwrap();
+                point_value(state, position.with_height(h + 1)).unwrap();
 
             let white_value = {
                 if let Heuristic(w) = white_placement_value {

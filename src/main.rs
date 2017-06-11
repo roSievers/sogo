@@ -45,7 +45,7 @@ fn main() {
         for i in 1..count+1 {
             println!("Match {} results in {:?}",
                      i,
-                     ai::run_match(&structure, &mut ai1, &mut ai2).victory_state);
+                     ai::run_match(structure.clone(), &mut ai1, &mut ai2).victory_state);
         }
         Ok(())
     }
@@ -164,10 +164,10 @@ fn interactive(structure: Rc<game::Structure>, mut p2: ai::AIBox) {
     let ui_connector = ui::UiConnector::new();
 
     // Run a game, this should look synchronous.
-    let mut state = game::State::new();
+    let mut state = game::State::new(structure.clone());
 
     loop {
-        user_turn(&ui_connector, &mut state, &structure);
+        user_turn(&ui_connector, &mut state);
 
         // Check for victory.
         if !state.victory_state.active() {
@@ -177,7 +177,7 @@ fn interactive(structure: Rc<game::Structure>, mut p2: ai::AIBox) {
             break;
         }
 
-        ai_turn(&ui_connector, &mut p2, &mut state, &structure);
+        ai_turn(&ui_connector, &mut p2, &mut state);
 
         // Check for victory.
         if !state.victory_state.active() {
@@ -190,25 +190,23 @@ fn interactive(structure: Rc<game::Structure>, mut p2: ai::AIBox) {
 }
 
 fn user_turn(ui_connector: &ui::UiConnector,
-             state: &mut game::State,
-             structure: &game::Structure) {
+             state: &mut game::State) {
     // Wait for the player to make the first action
     let action = ui_connector.wait_for_action().unwrap();
 
     let color = state.current_color;
-    state.execute(&structure, action);
+    state.execute(action);
     ui_connector.confirmed_action(action, color).unwrap();
 }
 
 fn ai_turn<A: StatelessAI>(ui_connector: &ui::UiConnector,
                            ai: &mut A,
-                           state: &mut game::State,
-                           structure: &game::Structure) {
+                           state: &mut game::State) {
     // Let the AI take one action
     let action = ai.action(&state);
 
     let color = state.current_color;
-    state.execute(&structure, action);
+    state.execute(action);
     ui_connector.confirmed_action(action, color).unwrap();
 }
 
@@ -225,10 +223,10 @@ fn demo(arguments: &clap::ArgMatches) -> Result<(), String> {
 
     let ui_connector = ui::UiConnector::new();
 
-    let mut state = game::State::new();
+    let mut state = game::State::new(structure.clone());
 
     loop {
-        ai_turn(&ui_connector, &mut active_ai, &mut state, &structure);
+        ai_turn(&ui_connector, &mut active_ai, &mut state);
 
         // Check for victory.
         if !state.victory_state.active() {

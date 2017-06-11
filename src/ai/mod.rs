@@ -73,18 +73,18 @@ impl StatelessAI for AIBox {
 
 
 pub fn run_match<T : StatelessAI, U : StatelessAI>(
-        structure : &game::Structure, white_player : &mut T, black_player : &mut U)
+        structure : Rc<game::Structure>, white_player : &mut T, black_player : &mut U)
         -> game::State {
     let mut i = 0;
 
-    let mut state = game::State::new();
+    let mut state = game::State::new(structure.clone());
     while state.victory_state == game::VictoryState::Undecided {
         if state.age == 64 {
             state.victory_state = game::VictoryState::Draw;
             return state;
         }
         let action = if i % 2 == 0 {white_player.action(&state)} else {black_player.action(&state)};
-        state.execute(structure, action);
+        state.execute(action);
         i += 1;
     }
     // println!("{:?}", i);

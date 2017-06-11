@@ -1,4 +1,5 @@
 use std::ops::{AddAssign, Not};
+use std::rc::Rc;
 
 // The two dimensional position is a number between 0 and 15,
 // the three dimensional position is a number between 0 and 63.
@@ -282,22 +283,24 @@ pub struct State {
     pub victory_state: VictoryState,
     // Caches the column height (0, 1, 2, 3) to quickly determine available moves.
     pub column_height: [u8; 16],
+    pub structure: Rc<Structure>,
 }
 
 impl State {
-    pub fn new() -> Self {
+    pub fn new(structure: Rc<Structure>) -> Self {
         State {
             points: [PointState::Empty; 64],
             current_color: PlayerColor::White,
             age: 0,
             victory_state: VictoryState::Undecided,
             column_height: [0; 16],
+            structure,
         }
     }
     pub fn at(&self, position: Position3) -> PointState {
         self.points[position.0 as usize]
     }
-    pub fn execute(&mut self, structure: &Structure, action: Action) {
+    pub fn execute(&mut self, action: Action) {
         match action {
             Action::Surrender => {
                 self.victory_state = VictoryState::Win {
@@ -305,11 +308,11 @@ impl State {
                     reason: None,
                 }
             }
-            Action::Play(position) => self.insert(structure, position),
+            Action::Play(position) => self.insert(position),
         }
     }
     // Panics, if the column is already full.
-    pub fn insert(&mut self, structure: &Structure, column: Position2) {
+    pub fn insert(&mut self, column: Position2) {
         let position = {
             let z = self.column_height.get_mut(column.0 as usize).unwrap();
             let position = column.with_height(*z);
@@ -318,12 +321,12 @@ impl State {
         };
         self.points[position.0 as usize] = PointState::Piece(self.current_color);
         self.age += 1;
-        self.update_victory_state(structure, position);
+        self.update_victory_state(position);
         self.current_color = !self.current_color;
     }
-    fn update_victory_state(&mut self, structure: &Structure, position: Position3) {
-        for subset_index in structure.reverse[position.0 as usize].iter() {
-            let subset = structure.source[*subset_index];
+    fn update_victory_state(&mut self, position: Position3) {
+        for subset_index in self.structure.reverse[position.0 as usize].iter() {
+            let subset = self.structure.source[*subset_index];
             if subset
                    .iter()
                    .all(|pos2| self.at(pos2) == PointState::Piece(self.current_color)) {
@@ -358,6 +361,7 @@ impl Clone for State {
             age: self.age,
             victory_state: self.victory_state,
             column_height: self.column_height,
+            structure: self.structure.clone(),
         }
     }
 }

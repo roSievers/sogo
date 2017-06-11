@@ -122,7 +122,7 @@ impl UiConnector {
 
 pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
     let structure = Rc::new(game::Structure::new(&LINES));
-    let mut replay = replay::History::new();
+    let mut replay = replay::History::new(structure.clone());
 
     let mut view_state = game_view::State::empty();
 
@@ -145,7 +145,7 @@ pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
                                          height as i32,
                                          z as i32,
                                          color);
-                    replay.add(&structure, action);
+                    replay.add(action);
                     // history.add(action, new_piece);
                 }
                 UiEvent::StartTurn => {

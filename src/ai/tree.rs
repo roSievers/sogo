@@ -8,22 +8,21 @@ use game::{Action, PlayerColor};
 use std::rc::Rc;
 
 
-pub fn recursive_judgement(structure: &game::Structure,
-                           state: &game::State,
+pub fn recursive_judgement(state: &game::State,
                            my_color: PlayerColor,
                            depth: u8,
                            value_function: value::Simple)
                            -> i32 {
     if depth == 0 || !state.victory_state.active() {
-        value_function.value_of(structure, state, my_color)
+        value_function.value_of(state, my_color)
     } else {
         let values = state
             .legal_actions()
             .map(|action| {
                 let mut new_state = state.clone();
-                new_state.execute(structure, action);
+                new_state.execute(action);
                 let value =
-                    recursive_judgement(structure, &new_state, my_color, depth - 1, value_function);
+                    recursive_judgement(&new_state, my_color, depth - 1, value_function);
                 value
             });
 
@@ -65,9 +64,8 @@ impl StatelessAI for TreeJudgementAI {
             .legal_actions()
             .map(|action| {
                 let mut new_state = state.clone();
-                new_state.execute(&self.structure, action);
-                let value = recursive_judgement(&self.structure,
-                                                &new_state,
+                new_state.execute(action);
+                let value = recursive_judgement(&new_state,
                                                 my_color,
                                                 self.search_depth - 1,
                                                 self.value_function);
