@@ -1,11 +1,10 @@
 
 use game_view;
-use game::Position2;
+use game_view::Phase;
 use game;
 use thread_synchronisation::{CoreEvent, UiEvent};
 use constants::LINES; //, PARALLELOGRAMS, PLUSSES};
 use std::rc::Rc;
-use replay;
 
 // Thread Communication
 use std::thread;
@@ -20,12 +19,6 @@ use kiss3d::window::Window;
 use kiss3d::light::Light;
 use kiss3d::camera::ArcBall;
 
-#[derive(PartialEq, Eq)]
-enum UiState {
-    Waiting,
-    Input,
-    GameOver(game::VictoryState),
-}
 
 fn prepare_window() -> Window {
     let mut window = Window::new("Sogo");
@@ -122,37 +115,24 @@ impl UiConnector {
 
 pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
     let structure = Rc::new(game::Structure::new(&LINES));
-    let mut replay = replay::History::new(structure.clone());
 
-    let mut view_state = game_view::State::empty();
+    let mut view_state = game_view::State::empty(structure.clone());
 
     let mut window = prepare_window();
     let mut camera = prepare_camera();
-
-    let mut ui_state = UiState::Waiting;
-
-    window.scene_mut().add_child(game_view::prepare_board());
 
     while window.render_with_camera(&mut camera) {
         // Read the inter thread communication channel
         while let Ok(event) = ui_receiver.try_recv() {
             match event {
-                UiEvent::RenderAction { action, color } => {
-                    let (x, z) = action.unwrap().coords();
-                    let height = replay.state.column_height[(x + 4 * z) as usize];
-                    game_view::add_piece(window.scene_mut(),
-                                         x as i32,
-                                         height as i32,
-                                         z as i32,
-                                         color);
-                    replay.add(action);
-                    // history.add(action, new_piece);
+                UiEvent::RenderAction { action, .. } => {
+                    view_state.replay.add(action);
                 }
                 UiEvent::StartTurn => {
-                    ui_state = UiState::Input;
+                    view_state.phase = Phase::Input;
                 }
                 UiEvent::GameOver(victory_state) => {
-                    ui_state = UiState::GameOver(victory_state);
+                    view_state.phase = Phase::GameOver(victory_state);
                 }
             }
         }
@@ -161,28 +141,27 @@ pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
         for event in window.events().iter() {
             match event.value {
                 WindowEvent::CursorPos(x, y) => {
-                    if ui_state == UiState::Input {
+                    if view_state.phase == Phase::Input {
                         let placement_candidate =
                             game_view::placement_coordinate(&window, &camera, (x, y));
-                        view_state.placement_hint(window.scene_mut(),
-                                                  replay.state.current_color,
-                                                  placement_candidate);
+                        view_state.hint = placement_candidate;
                     }
                 }
                 WindowEvent::MouseButton(MouseButton::Button1, Action::Release, _) => {
-                    if ui_state == UiState::Input {
-                        if let Some((x_value, z_value)) = view_state.placement_position() {
+                    if view_state.phase == Phase::Input {
+                        if let Some(position) = view_state.hint {
+                            view_state.hint = None;
                             // Is placing a piece allowed?
-                            if replay.state.column_height[(x_value + 4 * z_value) as usize] <= 3 {
-                                let action = Position2::new(x_value as u8, z_value as u8).into();
+                            if view_state.replay.state.column_height[position.0 as usize] <= 3 {
+                                let action = position.into();
                                 core_sender
                                     .send(CoreEvent::Action {
                                               action: action,
-                                              color: replay.state.current_color,
+                                              color: view_state.replay.state.current_color,
                                           })
                                     .unwrap();
                             }
-                            ui_state = UiState::Waiting;
+                            view_state.phase = Phase::Waiting;
                         }
                     }
                 }
@@ -197,6 +176,8 @@ pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
                 _ => {}
             }
         }
+
+        game_view::render(window.scene_mut(), &view_state);
     }
     core_sender.send(CoreEvent::Halt).unwrap();
 }

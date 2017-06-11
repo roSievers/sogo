@@ -35,6 +35,9 @@ impl Position3 {
         debug_assert!(x <= 3 && y <= 3 && z <= 3);
         Position3(x + 4 * y + 16 * z)
     }
+    pub fn coords(self) -> (u8, u8, u8) {
+        (self.0 % 4, (self.0 / 4) % 4, self.0 / 16)
+    }
 }
 
 impl From<Position3> for Position2 {
@@ -308,11 +311,16 @@ impl State {
                     reason: None,
                 }
             }
-            Action::Play(position) => self.insert(position),
+            Action::Play(column) => {
+                let position = self.insert(column);
+                let color = !self.current_color;
+                self.update_victory_state(position, color);
+            }
         }
     }
     // Panics, if the column is already full.
-    pub fn insert(&mut self, column: Position2) {
+    // This does NOT update the victory state. Use `.execute` for this.
+    pub fn insert(&mut self, column: Position2) -> Position3 {
         let position = {
             let z = self.column_height.get_mut(column.0 as usize).unwrap();
             let position = column.with_height(*z);
@@ -321,17 +329,17 @@ impl State {
         };
         self.points[position.0 as usize] = PointState::Piece(self.current_color);
         self.age += 1;
-        self.update_victory_state(position);
         self.current_color = !self.current_color;
+        position
     }
-    fn update_victory_state(&mut self, position: Position3) {
+    fn update_victory_state(&mut self, position: Position3, color: PlayerColor) {
         for subset_index in self.structure.reverse[position.0 as usize].iter() {
             let subset = self.structure.source[*subset_index];
             if subset
                    .iter()
-                   .all(|pos2| self.at(pos2) == PointState::Piece(self.current_color)) {
+                   .all(|pos2| self.at(pos2) == PointState::Piece(color)) {
                 self.victory_state = VictoryState::Win {
-                    winner: self.current_color,
+                    winner: color,
                     reason: Some(subset),
                 };
                 return;

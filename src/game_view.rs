@@ -1,65 +1,49 @@
-
+/* This module is supposed to isolate the state of the board. It should not know
+anything about the camera position and scale. Changing the board state should
+change the state of the 3D scene as well. To make this easier, the whole scene
+is reconstructed whenever the scene changes. */
 use na::{Vector3, Point2, Translation3};
 
 use kiss3d::scene::SceneNode;
 use kiss3d::window::Window;
 use kiss3d::camera::{ArcBall, Camera};
 
-use std::mem;
+use std::rc::Rc;
 
-use game::PlayerColor;
+use game;
+use game::{PlayerColor, Position2};
+use replay::History;
 
 const BALL_DIAMMETER: f32 = 0.6;
 const PLATE_HEIGHT: f32 = 0.4;
 const ROD_LENGTH: f32 = 3.6; // In units of pieces.
 
-struct Hint {
-    x: i32,
-    y: i32,
-    node: SceneNode,
+#[derive(PartialEq, Eq)]
+pub enum Phase {
+    Waiting,
+    Input,
+    GameOver(game::VictoryState),
 }
 
 pub struct State {
-    hint: Option<Hint>,
+    pub replay: History,
+    pub hint: Option<Position2>,
+    pub phase: Phase,
 }
 
 impl State {
-    pub fn empty() -> Self {
-        State { hint: None }
-    }
-    pub fn placement_hint(&mut self, scene: &mut SceneNode, color: PlayerColor, position: Option<(i32, i32)>) {
-        let current_position = self.hint.as_ref().map(|hint| (hint.x, hint.y));
-
-        if current_position == position {
-            return
+    pub fn empty(structure: Rc<game::Structure>) -> Self {
+        State {
+            replay: History::new(structure),
+            hint: None,
+            phase: Phase::Waiting,
         }
 
-        // Remove the node from the parent scene, if there is a node.
-        self.hint.as_mut().map(|hint| hint.node.unlink());
-
-        // Create a new hint object.
-        self.hint = position.map(|(x, y)| {
-            // TODO: Some verification
-            // if state.z_value(x as i8, y as i8).is_some() {
-            let node = add_hint(scene, x, y, color);
-            Hint {x, y, node}
-        })
-    }
-    // This dropes the current placement hint and returns its coordinates.
-    pub fn placement_position(&mut self) -> Option<(i32, i32)> {
-        let mut old_hint = None;
-
-        mem::swap(&mut old_hint, &mut self.hint);
-
-        old_hint.as_mut().map(|hint| {
-            hint.node.unlink();
-            (hint.x, hint.y)
-        })
     }
 }
 
 /// Calculates the center of the piece in virtual 3D coordinates.
-pub fn piece_position(x: i32, y: i32, z: i32) -> Vector3<f32> {
+fn piece_position(x: i32, y: i32, z: i32) -> Vector3<f32> {
     return Vector3::new((x as f32) - 1.5,
                         (y as f32 + 0.5) * BALL_DIAMMETER * 0.97,
                         (z as f32) - 1.5);
@@ -90,21 +74,10 @@ pub fn prepare_board() -> SceneNode {
 }
 
 /// Creates a new 3D gamepiece and places it at the supplied position.
-pub fn add_piece(scene: &mut SceneNode, x: i32, y: i32, z: i32, color: PlayerColor) -> SceneNode {
+pub fn add_hint(scene: &mut SceneNode, position: Position2, color: PlayerColor) -> SceneNode {
+    let (x, z) = position.coords();
     let mut piece = scene.add_sphere(BALL_DIAMMETER / 2.0);
-    piece.append_translation(&Translation3::from_vector(piece_position(x, y, z)));
-    match color {
-        PlayerColor::White => piece.set_color(1.0, 1.0, 1.0),
-        PlayerColor::Black => piece.set_color(0.0, 0.0, 0.0),
-    }
-
-    piece
-}
-
-/// Creates a new 3D gamepiece and places it at the supplied position.
-pub fn add_hint(scene: &mut SceneNode, x: i32, z: i32, color: PlayerColor) -> SceneNode {
-    let mut piece = scene.add_sphere(BALL_DIAMMETER / 2.0);
-    piece.append_translation(&Translation3::from_vector(piece_position(x, 0, z)));
+    piece.append_translation(&Translation3::from_vector(piece_position(x as i32, 0, z as i32)));
     piece.append_translation(&Translation3::new(0.0, BALL_DIAMMETER * ROD_LENGTH, 0.0));
     match color {
         PlayerColor::White => piece.set_color(1.0, 1.0, 1.0),
@@ -117,7 +90,7 @@ pub fn add_hint(scene: &mut SceneNode, x: i32, z: i32, color: PlayerColor) -> Sc
 pub fn placement_coordinate(window: &Window,
                             camera: &ArcBall,
                             cursor_position: (f64, f64))
-                            -> Option<(i32, i32)> {
+                            -> Option<Position2> {
     let (x, y) = cursor_position;
     let (anchor, direction) = camera.unproject(&Point2::new(x as f32, y as f32), &window.size());
     // Fixme: might divide by zero.
@@ -126,8 +99,38 @@ pub fn placement_coordinate(window: &Window,
     let z_value = (anchor.z + lambda * direction.z + 1.5).round() as i32;
 
     if 0 <= x_value && x_value < 4 && 0 <= z_value && z_value < 4 {
-        Some((x_value, z_value))
+        Some(Position2::new(x_value as u8, z_value as u8))
     } else {
         None
+    }
+}
+
+
+pub fn render(target: &mut SceneNode, state: &State) {
+    // First, clear the scene. This is a hack to make Kiss3D "stateless".
+    let mut workaround_node_vec = vec![];
+    target.apply_to_scene_nodes(&mut |node| workaround_node_vec.push(node.clone()));
+    for mut node in workaround_node_vec {
+        node.unlink();
+    }
+    // Render the empty board. (Baseplate & Sticks)
+    target.add_child(prepare_board());
+
+    // Render all pieces currently positioned.
+    for (position, color) in state.replay.playback() {
+        let mut piece = target.add_sphere(BALL_DIAMMETER / 2.0);
+        let (x, y, z) = position.coords();
+        piece.append_translation(&Translation3::from_vector(piece_position(x as i32,
+                                                                           z as i32,
+                                                                           y as i32)));
+        match color {
+            PlayerColor::White => piece.set_color(1.0, 1.0, 1.0),
+            PlayerColor::Black => piece.set_color(0.0, 0.0, 0.0),
+        }
+    }
+
+    // If there is a hint, render it.
+    if let Some(position) = state.hint {
+        add_hint(target, position, state.replay.state.current_color);
     }
 }

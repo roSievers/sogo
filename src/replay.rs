@@ -59,4 +59,31 @@ impl History {
             return;
         }
     }
+    pub fn playback(&self) -> HistoryPlayback {
+        HistoryPlayback {
+            index : 0,
+            actions: &self.actions,
+            state: game::State::new(self.state.structure.clone()),
+        }
+    }
+}
+
+pub struct HistoryPlayback<'a> {
+    index: usize,
+    actions: &'a Vec<game::Action>,
+    state: game::State,
+}
+
+impl<'a> Iterator for HistoryPlayback<'a> {
+    type Item = (game::Position3, game::PlayerColor);
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(action) = self.actions.get(self.index) {
+            let color = self.state.current_color;
+            let position = self.state.insert(action.unwrap());
+            self.index += 1;
+            Some((position, color))
+        } else {
+            None
+        }
+    }
 }
