@@ -67,7 +67,7 @@ impl History {
         let max_index = self.playback_count.unwrap_or(self.actions.len());
 
         HistoryPlayback {
-            index : 0,
+            index: 0,
             max_index,
             actions: &self.actions,
             state: game::State::new(self.state.structure.clone()),
@@ -93,7 +93,7 @@ impl<'a> Iterator for HistoryPlayback<'a> {
             self.index += 1;
             Some((position, color))
         } else {
-             panic!("The precondition should prevent large indices!")
+            panic!("The precondition should prevent large indices!")
         }
     }
 }

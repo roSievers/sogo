@@ -44,9 +44,11 @@ impl State {
 
 /// Calculates the center of the piece in virtual 3D coordinates.
 fn piece_position(x: i32, y: i32, z: i32) -> Vector3<f32> {
-    return Vector3::new((x as f32) - 1.5,
-                        (y as f32 + 0.5) * BALL_DIAMMETER * 0.97,
-                        (z as f32) - 1.5);
+    return Vector3::new(
+        (x as f32) - 1.5,
+        (y as f32 + 0.5) * BALL_DIAMMETER * 0.97,
+        (z as f32) - 1.5,
+    );
 }
 
 
@@ -63,9 +65,11 @@ pub fn prepare_board() -> SceneNode {
         for j in 0..4 {
             let height = BALL_DIAMMETER * ROD_LENGTH;
             let mut cylinder = node.add_cylinder(0.07f32, height);
-            cylinder.append_translation(&Translation3::new((i as f32) - 1.5,
-                                                           height / 2.0,
-                                                           (j as f32) - 1.5));
+            cylinder.append_translation(&Translation3::new(
+                (i as f32) - 1.5,
+                height / 2.0,
+                (j as f32) - 1.5,
+            ));
             cylinder.set_color(0.87, 0.72, 0.53);
         }
     }
@@ -77,7 +81,9 @@ pub fn prepare_board() -> SceneNode {
 pub fn add_hint(scene: &mut SceneNode, position: Position2, color: game::Color) -> SceneNode {
     let (x, z) = position.coords();
     let mut piece = scene.add_sphere(BALL_DIAMMETER / 2.0);
-    piece.append_translation(&Translation3::from_vector(piece_position(x as i32, 0, z as i32)));
+    piece.append_translation(&Translation3::from_vector(
+        piece_position(x as i32, 0, z as i32),
+    ));
     piece.append_translation(&Translation3::new(0.0, BALL_DIAMMETER * ROD_LENGTH, 0.0));
     match color {
         game::Color::White => piece.set_color(1.0, 1.0, 1.0),
@@ -87,10 +93,11 @@ pub fn add_hint(scene: &mut SceneNode, position: Position2, color: game::Color) 
     piece
 }
 
-pub fn placement_coordinate(window: &Window,
-                            camera: &ArcBall,
-                            cursor_position: (f64, f64))
-                            -> Option<Position2> {
+pub fn placement_coordinate(
+    window: &Window,
+    camera: &ArcBall,
+    cursor_position: (f64, f64),
+) -> Option<Position2> {
     let (x, y) = cursor_position;
     let (anchor, direction) = camera.unproject(&Point2::new(x as f32, y as f32), &window.size());
     // Fixme: might divide by zero.
@@ -120,9 +127,9 @@ pub fn render(target: &mut SceneNode, state: &State) {
     for (position, color) in state.replay.playback() {
         let mut piece = target.add_sphere(BALL_DIAMMETER / 2.0);
         let (x, y, z) = position.coords();
-        piece.append_translation(&Translation3::from_vector(piece_position(x as i32,
-                                                                           z as i32,
-                                                                           y as i32)));
+        piece.append_translation(&Translation3::from_vector(
+            piece_position(x as i32, z as i32, y as i32),
+        ));
         match color {
             game::Color::White => piece.set_color(1.0, 1.0, 1.0),
             game::Color::Black => piece.set_color(0.0, 0.0, 0.0),

@@ -12,10 +12,7 @@ pub enum Simple {
 }
 
 impl Simple {
-    pub fn value_of(self,
-                    state: &game::State,
-                    my_color: game::Color)
-                    -> i32 {
+    pub fn value_of(self, state: &game::State, my_color: game::Color) -> i32 {
         match self {
             Simple::Subsets => subsets(state, my_color),
             Simple::WinOnly => win_only(state, my_color),
@@ -120,9 +117,7 @@ enum SideValue {
 
 // Calculates the point value for White and Black.
 #[allow(dead_code)]
-fn point_value(state: &game::State,
-               position: Position3)
-               -> Option<(SideValue, SideValue)> {
+fn point_value(state: &game::State, position: Position3) -> Option<(SideValue, SideValue)> {
     use game::Color::White;
 
     // This is only defined for empty positions.
@@ -184,9 +179,7 @@ fn point_value(state: &game::State,
 
 // Is this column worth playing at?
 #[allow(dead_code)]
-fn column_value(state: &game::State,
-                position: Position2)
-                -> Option<(SideValue, SideValue)> {
+fn column_value(state: &game::State, position: Position2) -> Option<(SideValue, SideValue)> {
     use self::SideValue::{LastMissingPiece, Heuristic, DirectLoss};
     let height: u8 = state.column_height[position.0 as usize];
 

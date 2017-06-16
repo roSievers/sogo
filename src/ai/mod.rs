@@ -7,7 +7,7 @@ pub mod tree;
 pub mod value;
 
 use game;
-use game::{Action};
+use game::Action;
 use std::rc::Rc;
 
 // I should first focus on stateless AIs. The current AIs are all stateless
@@ -20,7 +20,10 @@ pub trait StatelessAI {
 pub enum Constructor {
     Random,
     MonteCarlo { endurance: usize },
-    Tree { depth: u8, value_function: value::Simple },
+    Tree {
+        depth: u8,
+        value_function: value::Simple,
+    },
 }
 
 pub enum AIBox {
@@ -36,9 +39,14 @@ impl AIBox {
             Constructor::MonteCarlo { endurance } => {
                 AIBox::MC(mc::MonteCarloAI::new(structure.clone(), endurance))
             }
-            Constructor::Tree { depth, value_function } => {
-                AIBox::Tree(tree::TreeJudgementAI::new(structure.clone(), depth, value_function))
-            }
+            Constructor::Tree {
+                depth,
+                value_function,
+            } => AIBox::Tree(tree::TreeJudgementAI::new(
+                structure.clone(),
+                depth,
+                value_function,
+            )),
         }
     }
 }
@@ -72,9 +80,11 @@ impl StatelessAI for AIBox {
 }*/
 
 
-pub fn run_match<T : StatelessAI, U : StatelessAI>(
-        structure : Rc<game::Structure>, white_player : &mut T, black_player : &mut U)
-        -> game::State {
+pub fn run_match<T: StatelessAI, U: StatelessAI>(
+    structure: Rc<game::Structure>,
+    white_player: &mut T,
+    black_player: &mut U,
+) -> game::State {
     let mut i = 0;
 
     let mut state = game::State::new(structure.clone());
@@ -83,7 +93,11 @@ pub fn run_match<T : StatelessAI, U : StatelessAI>(
             state.victory_state = game::VictoryState::Draw;
             return state;
         }
-        let action = if i % 2 == 0 {white_player.action(&state)} else {black_player.action(&state)};
+        let action = if i % 2 == 0 {
+            white_player.action(&state)
+        } else {
+            black_player.action(&state)
+        };
         state.execute(action);
         i += 1;
     }
@@ -94,12 +108,12 @@ pub fn run_match<T : StatelessAI, U : StatelessAI>(
 
 // To make the gameplay more interesting, the AI should chose a random best move
 // instead of a deterministic one.
-fn random_best_move<T: Iterator<Item=(Action, i32)>>(mut tuples: T) -> Action {
+fn random_best_move<T: Iterator<Item = (Action, i32)>>(mut tuples: T) -> Action {
     use rand::{thread_rng, Rng};
 
     let (initial_action, initial_value) = tuples.next().unwrap();
 
-    let mut best_actions = vec!(initial_action);
+    let mut best_actions = vec![initial_action];
     let mut best_value = initial_value;
 
     while let Some((action, value)) = tuples.next() {
@@ -108,7 +122,7 @@ fn random_best_move<T: Iterator<Item=(Action, i32)>>(mut tuples: T) -> Action {
         } else if value == best_value {
             best_actions.push(action);
         } else {
-            best_actions = vec!(action);
+            best_actions = vec![action];
             best_value = value;
         }
     }

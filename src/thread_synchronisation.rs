@@ -8,7 +8,7 @@ use game::{Action, VictoryState};
 pub enum CoreEvent {
     #[allow(dead_code)]
     DebugOutput(String),
-    Action { action : Action, color : game::Color },
+    Action { action: Action, color: game::Color },
     Halt,
 }
 
@@ -16,5 +16,5 @@ pub enum CoreEvent {
 pub enum UiEvent {
     StartTurn,
     GameOver(VictoryState),
-    RenderAction { action : Action, color : game::Color },
+    RenderAction { action: Action, color: game::Color },
 }

@@ -42,10 +42,12 @@ fn main() {
         let mut ai1 = ai::AIBox::new(structure.clone(), ai1_params);
         let mut ai2 = ai::AIBox::new(structure.clone(), ai2_params);
 
-        for i in 1..count+1 {
-            println!("Match {} results in {:?}",
-                     i,
-                     ai::run_match(structure.clone(), &mut ai1, &mut ai2).victory_state);
+        for i in 1..count + 1 {
+            println!(
+                "Match {} results in {:?}",
+                i,
+                ai::run_match(structure.clone(), &mut ai1, &mut ai2).victory_state
+            );
         }
         Ok(())
     }
@@ -60,10 +62,9 @@ fn main() {
         return;
     }
 
-    let ai_parameter_result = matches
-        .values_of("opponent")
-        .map(ai_parser)
-        .unwrap_or(Ok(ai::Constructor::MonteCarlo { endurance: 1000 }));
+    let ai_parameter_result = matches.values_of("opponent").map(ai_parser).unwrap_or(Ok(
+        ai::Constructor::MonteCarlo { endurance: 1000 },
+    ));
 
     let ai_parameter = match ai_parameter_result {
         Ok(param) => param,
@@ -85,26 +86,32 @@ fn parse_command_line_input<'clap>() -> clap::ArgMatches<'clap> {
         Err(_) => Err("Needs to be an integer.".to_owned()),
     };
 
-    let ai_1 = || Arg::with_name("ai1")
-             .short("p")
-             .required(true)
-             .help("Specify first AI.")
-             .min_values(1);
-    let ai_2 = || Arg::with_name("ai2")
-             .short("q")
-             .required(true)
-             .help("Specify second AI.")
-             .min_values(1);
+    let ai_1 = || {
+        Arg::with_name("ai1")
+            .short("p")
+            .required(true)
+            .help("Specify first AI.")
+            .min_values(1)
+    };
+    let ai_2 = || {
+        Arg::with_name("ai2")
+            .short("q")
+            .required(true)
+            .help("Specify second AI.")
+            .min_values(1)
+    };
 
     let batch_run = SubCommand::with_name("batch")
         .about("Executes many AI matches at once.")
-        .arg(Arg::with_name("count")
-                 .short("n")
-                 .long("count")
-                 .help("How many matches should be played")
-                 .takes_value(true)
-                 .default_value("1")
-                 .validator(validate_integer))
+        .arg(
+            Arg::with_name("count")
+                .short("n")
+                .long("count")
+                .help("How many matches should be played")
+                .takes_value(true)
+                .default_value("1")
+                .validator(validate_integer),
+        )
         .arg(ai_1())
         .arg(ai_2());
 
@@ -135,26 +142,25 @@ fn ai_parser(mut values: clap::Values) -> Result<ai::Constructor, String> {
     match ai_name {
         "random" => Ok(ai::Constructor::Random),
         "mc" => {
-            let endurance = values
-                .next()
-                .unwrap_or("10000")
-                .parse::<usize>()
-                .map_err(|_| "The endurance needs to be a number.")?;
+            let endurance = values.next().unwrap_or("10000").parse::<usize>().map_err(
+                |_| "The endurance needs to be a number.",
+            )?;
             Ok(ai::Constructor::MonteCarlo { endurance })
         }
         "tree" => {
-            let depth = values
-                .next()
-                .unwrap_or("2")
-                .parse::<u8>()
-                .map_err(|_| "The depth needs to be a number.")?;
+            let depth = values.next().unwrap_or("2").parse::<u8>().map_err(
+                |_| "The depth needs to be a number.",
+            )?;
 
             let value_function = values
                 .next()
                 .unwrap_or("subsets")
                 .parse::<ai::value::Simple>()
                 .map_err(|_| "Invalid value function provided.")?;
-            Ok(ai::Constructor::Tree { depth, value_function })
+            Ok(ai::Constructor::Tree {
+                depth,
+                value_function,
+            })
         }
         _ => Err("AI not recognized.")?,
     }
@@ -189,8 +195,7 @@ fn interactive(structure: Rc<game::Structure>, mut p2: ai::AIBox) {
     }
 }
 
-fn user_turn(ui_connector: &ui::UiConnector,
-             state: &mut game::State) {
+fn user_turn(ui_connector: &ui::UiConnector, state: &mut game::State) {
     // Wait for the player to make the first action
     let action = ui_connector.wait_for_action().unwrap();
 
@@ -199,9 +204,7 @@ fn user_turn(ui_connector: &ui::UiConnector,
     ui_connector.confirmed_action(action, color).unwrap();
 }
 
-fn ai_turn<A: StatelessAI>(ui_connector: &ui::UiConnector,
-                           ai: &mut A,
-                           state: &mut game::State) {
+fn ai_turn<A: StatelessAI>(ui_connector: &ui::UiConnector, ai: &mut A, state: &mut game::State) {
     // Let the AI take one action
     let action = ai.action(&state);
 

@@ -79,15 +79,12 @@ impl UiConnector {
             Err("Application window closed.".to_owned())
         }
     }
-    pub fn confirmed_action(&self,
-                            action: game::Action,
-                            color: game::Color)
-                            -> Result<(), String> {
+    pub fn confirmed_action(&self, action: game::Action, color: game::Color) -> Result<(), String> {
         self.sender
             .send(UiEvent::RenderAction {
-                      action: action,
-                      color: color,
-                  })
+                action: action,
+                color: color,
+            })
             .unwrap();
         Ok(())
     }
@@ -100,8 +97,10 @@ impl UiConnector {
             match event {
                 CoreEvent::Halt => (),
                 remainder => {
-                    println!("UI returned an event after the game finished: {:?}",
-                             remainder);
+                    println!(
+                        "UI returned an event after the game finished: {:?}",
+                        remainder
+                    );
                     self.wait_for_halt()
                 }
             }
@@ -156,9 +155,9 @@ pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
                             let action = position.into();
                             core_sender
                                 .send(CoreEvent::Action {
-                                          action: action,
-                                          color: view_state.replay.state.current_color,
-                                      })
+                                    action: action,
+                                    color: view_state.replay.state.current_color,
+                                })
                                 .unwrap();
                         }
                         view_state.phase = Phase::Waiting;

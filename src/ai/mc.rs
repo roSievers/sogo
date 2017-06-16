@@ -41,9 +41,7 @@ impl StatelessAI for MonteCarloAI {
             .map(|action| {
                 let mut new_state = state.clone();
                 new_state.execute(*action);
-                let value = monte_carlo_judgement(&new_state,
-                                                  my_color,
-                                                  endurance_per_action);
+                let value = monte_carlo_judgement(&new_state, my_color, endurance_per_action);
                 (action, value)
             })
             .max_by_key(|&(_, value)| value)
@@ -53,10 +51,7 @@ impl StatelessAI for MonteCarloAI {
     }
 }
 
-fn monte_carlo_judgement(state: &game::State,
-                         my_color: game::Color,
-                         amount: usize)
-                         -> i32 {
+fn monte_carlo_judgement(state: &game::State, my_color: game::Color, amount: usize) -> i32 {
     let stats = random_playout_sample(state, amount);
     if my_color == game::Color::White {
         return stats.white - stats.black;
@@ -79,9 +74,7 @@ pub fn random_playout(state: &game::State) -> VictoryState {
 }
 
 
-pub fn random_playout_sample(state: &game::State,
-                             number: usize)
-                             -> VictoryStats {
+pub fn random_playout_sample(state: &game::State, number: usize) -> VictoryStats {
     let mut statics = game::VictoryStats::new();
     for _ in 0..number {
         let result = random_playout(&state);
@@ -91,7 +84,7 @@ pub fn random_playout_sample(state: &game::State,
                     game::Color::White => statics.white += 1,
                     game::Color::Black => statics.black += 1,
                 }
-            },
+            }
             game::VictoryState::Draw => statics.draws += 1,
             game::VictoryState::Undecided => {
                 panic!("The game_state should never be undecided after a random playout.")

@@ -250,14 +250,72 @@ impl Structure {
         // Convert raw u64 into Subset objects. (Which are u64 with extra structure.)
         let source: Vec<Subset> = victory_objects.iter().map(|v| Subset(*v)).collect();
         // Unfortunately, [vec![]; 64] does not work :-/
-        let mut reverse = [vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![],
-                           vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![],
-                           vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![],
-                           vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![],
-                           vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![],
-                           vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![],
-                           vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![],
-                           vec![]];
+        let mut reverse = [
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        ];
 
         let mut object_size = EqualityVerifier::NoValue;
 
@@ -335,9 +393,10 @@ impl State {
     fn update_victory_state(&mut self, position: Position3, color: Color) {
         for subset_index in self.structure.reverse[position.0 as usize].iter() {
             let subset = self.structure.source[*subset_index];
-            if subset
-                   .iter()
-                   .all(|pos2| self.at(pos2) == PointState::Piece(color)) {
+            if subset.iter().all(|pos2| {
+                self.at(pos2) == PointState::Piece(color)
+            })
+            {
                 self.victory_state = VictoryState::Win {
                     winner: color,
                     reason: Some(subset),
@@ -352,11 +411,13 @@ impl State {
     // Or change to nightly at any point :P
     pub fn legal_actions<'a>(&'a self) -> Box<Iterator<Item = Action> + 'a> {
         // Fuck missing impl trait xP
-        Box::new(self.column_height
-                     .iter()
-                     .enumerate()
-                     .filter(|&(_, h)| *h <= 3)
-                     .map(|(i, _)| Position2(i as u8).into()))
+        Box::new(
+            self.column_height
+                .iter()
+                .enumerate()
+                .filter(|&(_, h)| *h <= 3)
+                .map(|(i, _)| Position2(i as u8).into()),
+        )
     }
 }
 
