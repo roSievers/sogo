@@ -73,6 +73,17 @@ impl History {
             state: game::State::new(self.state.structure.clone()),
         }
     }
+    pub fn notation(&self) -> String {
+        let mut buffer = String::new();
+
+        for (index, (position, _)) in self.playback().enumerate() {
+            let (x, y, z) = position.coords();
+            let x_letter = ['A', 'B', 'C', 'D'][x as usize];
+            buffer += &format!("{}. {}{} ({}) ", index + 1, x_letter, y + 1, z + 1);
+        }
+
+        buffer
+    }
 }
 
 pub struct HistoryPlayback<'a> {

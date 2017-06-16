@@ -132,6 +132,7 @@ pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
                 }
                 UiEvent::GameOver(victory_state) => {
                     view_state.phase = Phase::GameOver(victory_state);
+                    println!("Game as notation: {}", view_state.replay.notation());
                 }
             }
         }
