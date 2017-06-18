@@ -211,6 +211,13 @@ impl VictoryState {
             _ => false,
         }
     }
+    pub fn scoring(&self, color: Color) -> Option<i8> {
+        match *self {
+            VictoryState::Win { winner, .. } => if winner == color { Some(1) } else { Some(-1) },
+            VictoryState::Draw => Some(0),
+            VictoryState::Undecided => None,
+        }
+    }
 }
 
 // TODO: Move this elsewhere, helpers for a start. Implement some traits

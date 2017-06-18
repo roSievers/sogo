@@ -5,6 +5,7 @@ pub mod random;
 pub mod mc;
 pub mod tree;
 pub mod value;
+mod mctree;
 
 use game;
 use game::Action;
@@ -24,21 +25,21 @@ pub enum Constructor {
         depth: u8,
         value_function: value::Simple,
     },
+    MonteCarloTree { endurance: usize, exploration: f32 },
 }
 
 pub enum AIBox {
     Random(random::RandomSogoAI),
     MC(mc::MonteCarloAI),
     Tree(tree::TreeJudgementAI),
+    MCTree(mctree::MCTreeAI),
 }
 
 impl AIBox {
     pub fn new(structure: Rc<game::Structure>, ai_parameter: Constructor) -> AIBox {
         match ai_parameter {
             Constructor::Random => AIBox::Random(random::RandomSogoAI::new()),
-            Constructor::MonteCarlo { endurance } => {
-                AIBox::MC(mc::MonteCarloAI::new(structure.clone(), endurance))
-            }
+            Constructor::MonteCarlo { endurance } => AIBox::MC(mc::MonteCarloAI::new(endurance)),
             Constructor::Tree {
                 depth,
                 value_function,
@@ -47,6 +48,10 @@ impl AIBox {
                 depth,
                 value_function,
             )),
+            Constructor::MonteCarloTree {
+                endurance,
+                exploration,
+            } => AIBox::MCTree(mctree::MCTreeAI::new(endurance, exploration)),
         }
     }
 }
@@ -57,6 +62,7 @@ impl StatelessAI for AIBox {
             &AIBox::Random(ref ai) => ai.action(state),
             &AIBox::MC(ref ai) => ai.action(state),
             &AIBox::Tree(ref ai) => ai.action(state),
+            &AIBox::MCTree(ref ai) => ai.action(state),
         }
     }
 }

@@ -118,13 +118,13 @@ fn ai_parser(mut values: clap::Values) -> Result<ai::Constructor, String> {
         "random" => Ok(ai::Constructor::Random),
         "mc" => {
             let endurance = values.next().unwrap_or("10000").parse::<usize>().map_err(
-                |_| "The endurance needs to be a number.",
+                |_| "The endurance needs to be a positive integer.",
             )?;
             Ok(ai::Constructor::MonteCarlo { endurance })
         }
         "tree" => {
             let depth = values.next().unwrap_or("2").parse::<u8>().map_err(
-                |_| "The depth needs to be a number.",
+                |_| "The depth needs to be a small positive integer.",
             )?;
 
             let value_function = values
@@ -136,6 +136,21 @@ fn ai_parser(mut values: clap::Values) -> Result<ai::Constructor, String> {
                 depth,
                 value_function,
             })
+        }
+        "mctree" => {
+            let endurance = values.next().unwrap_or("10000").parse::<usize>().map_err(
+                |_| "The endurance needs to be a positive integer.",
+            )?;
+
+            let exploration = values.next().unwrap_or("1.41").parse::<f32>().map_err(
+                |_| "The exploration needs to be a positive real number.",
+            )?;
+
+            Ok(ai::Constructor::MonteCarloTree {
+                endurance,
+                exploration,
+            })
+
         }
         _ => Err("AI not recognized.")?,
     }

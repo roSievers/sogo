@@ -4,7 +4,6 @@ use ai::StatelessAI;
 use game;
 use game::{Action, VictoryState, VictoryStats};
 
-use std::rc::Rc;
 use rand::{thread_rng, Rng};
 
 
@@ -15,16 +14,12 @@ use rand::{thread_rng, Rng};
 #[allow(dead_code)]
 pub struct MonteCarloAI {
     endurance: usize, // How many random games am I allowed to play each turn?
-    structure: Rc<game::Structure>,
 }
 
 #[allow(dead_code)]
 impl MonteCarloAI {
-    pub fn new(structure: Rc<game::Structure>, endurance: usize) -> MonteCarloAI {
-        MonteCarloAI {
-            endurance: endurance,
-            structure: structure,
-        }
+    pub fn new(endurance: usize) -> MonteCarloAI {
+        MonteCarloAI { endurance: endurance }
     }
 }
 
@@ -78,6 +73,7 @@ pub fn random_playout_sample(state: &game::State, number: usize) -> VictoryStats
     let mut statics = game::VictoryStats::new();
     for _ in 0..number {
         let result = random_playout(&state);
+        // TODO: Use the function provided by game::VictoryState
         match result {
             game::VictoryState::Win { winner, .. } => {
                 match winner {
