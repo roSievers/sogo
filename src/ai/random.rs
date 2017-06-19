@@ -1,6 +1,6 @@
 
 use game;
-use game::Action;
+use game::Position2;
 
 use rand::{thread_rng, Rng};
 use ai::StatelessAI;
@@ -17,11 +17,8 @@ impl RandomSogoAI {
 }
 
 impl StatelessAI for RandomSogoAI {
-    fn action(&self, state: &game::State) -> Action {
-        let legal_actions: Vec<Action> = state.legal_actions().collect();
-        thread_rng().choose(&legal_actions).map_or(
-            Action::Surrender,
-            |&a| a.clone(),
-        )
+    fn action(&self, state: &game::State) -> Position2 {
+        let legal_actions: Vec<Position2> = state.legal_actions().collect();
+        *thread_rng().choose(&legal_actions).unwrap()
     }
 }

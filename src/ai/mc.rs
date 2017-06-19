@@ -2,7 +2,7 @@
 use ai::StatelessAI;
 
 use game;
-use game::{Action, VictoryState, VictoryStats};
+use game::{Position2, VictoryState, VictoryStats};
 
 use rand::{thread_rng, Rng};
 
@@ -24,9 +24,9 @@ impl MonteCarloAI {
 }
 
 impl StatelessAI for MonteCarloAI {
-    fn action(&self, state: &game::State) -> Action {
+    fn action(&self, state: &game::State) -> Position2 {
         let my_color = state.current_color;
-        let legal_actions: Vec<Action> = state.legal_actions().collect();
+        let legal_actions: Vec<Position2> = state.legal_actions().collect();
         let endurance_per_action = self.endurance / (legal_actions.len() as usize);
 
         // Each action is judged by running a certain number of random matches.
@@ -60,10 +60,9 @@ pub fn random_playout(state: &game::State) -> VictoryState {
     let mut my_state = state.clone();
     let mut rng = thread_rng();
     while my_state.victory_state == VictoryState::Undecided {
-        let surrender = Action::Surrender;
-        let legal_actions: Vec<Action> = my_state.legal_actions().collect();
-        let action = rng.choose(&legal_actions).unwrap_or(&surrender);
-        my_state.execute(*action);
+        let legal_actions: Vec<Position2> = my_state.legal_actions().collect();
+        let action = *rng.choose(&legal_actions).unwrap();
+        my_state.execute(action);
     }
     my_state.victory_state
 }

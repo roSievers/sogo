@@ -4,7 +4,7 @@ use ai::value;
 use ai::StatelessAI;
 
 use game;
-use game::Action;
+use game::Position2;
 use std::rc::Rc;
 
 
@@ -55,7 +55,7 @@ impl TreeJudgementAI {
 }
 
 impl StatelessAI for TreeJudgementAI {
-    fn action(&self, state: &game::State) -> Action {
+    fn action(&self, state: &game::State) -> Position2 {
         let my_color = state.current_color;
 
         let graded_actions = state.legal_actions().map(|action| {

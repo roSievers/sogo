@@ -157,29 +157,6 @@ impl Not for Color {
 }
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
-pub enum Action {
-    Play(Position2),
-    Surrender,
-}
-
-impl Action {
-    // No new function. If you want to create an Action, use Position2::into().
-    pub fn unwrap(self) -> Position2 {
-        match self {
-            Action::Play(position) => position,
-            Action::Surrender => panic!("You can't unwrap a Action::Surrender."),
-        }
-    }
-}
-
-// This also gets me a free `impl Into<Action> for Position2`.
-impl From<Position2> for Action {
-    fn from(position: Position2) -> Action {
-        Action::Play(position)
-    }
-}
-
-#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum PointState {
     Piece(Color),
     Empty,
@@ -368,20 +345,10 @@ impl State {
     pub fn at(&self, position: Position3) -> PointState {
         self.points[position.0 as usize]
     }
-    pub fn execute(&mut self, action: Action) {
-        match action {
-            Action::Surrender => {
-                self.victory_state = VictoryState::Win {
-                    winner: !self.current_color,
-                    reason: None,
-                }
-            }
-            Action::Play(column) => {
-                let position = self.insert(column);
-                let color = !self.current_color;
-                self.update_victory_state(position, color);
-            }
-        }
+    pub fn execute(&mut self, column: Position2) {
+        let position = self.insert(column);
+        let color = !self.current_color;
+        self.update_victory_state(position, color);
     }
     // Panics, if the column is already full.
     // This does NOT update the victory state. Use `.execute` for this.
@@ -411,19 +378,22 @@ impl State {
                 return;
             }
         }
+        if self.age == 64 {
+            self.victory_state = VictoryState::Draw;
+        }
     }
     // TODO: Remove the Box when `impl Trait` lands.
     // This is predicted for 1.20 on 31st of August 2017.
     // https://internals.rust-lang.org/t/rust-release-milestone-predictions/4591
     // Or change to nightly at any point :P
-    pub fn legal_actions<'a>(&'a self) -> Box<Iterator<Item = Action> + 'a> {
+    pub fn legal_actions<'a>(&'a self) -> Box<Iterator<Item = Position2> + 'a> {
         // Fuck missing impl trait xP
         Box::new(
             self.column_height
                 .iter()
                 .enumerate()
                 .filter(|&(_, h)| *h <= 3)
-                .map(|(i, _)| Position2(i as u8).into()),
+                .map(|(i, _)| Position2(i as u8)),
         )
     }
 }

@@ -43,6 +43,7 @@ impl VecTree {
     }
 }
 
+#[allow(dead_code)]
 struct Node {
     // The win_count counts wins - losses and can be negative.
     win_count: isize,
@@ -130,7 +131,7 @@ impl VecTree {
             panic!("Trying to choose a best child when no children are avaliable.")
         });
 
-        state.execute(Position2(choosen_position as u8).into());
+        state.execute(Position2(choosen_position as u8));
 
         if let ChildRef::Expanded(child_index) =
             self.storage[node_index.0].children[choosen_position]
@@ -174,7 +175,7 @@ impl VecTree {
             choosen_position
         };
 
-        state.execute(Position2(choosen_position as u8).into());
+        state.execute(Position2(choosen_position as u8));
         self.storage.push(
             Node::new(new_index, Some(node_index), &state),
         );
@@ -212,7 +213,7 @@ impl MCTreeAI {
 
 #[allow(dead_code)]
 impl StatelessAI for MCTreeAI {
-    fn action(&self, state: &game::State) -> game::Action {
+    fn action(&self, state: &game::State) -> Position2 {
         use ai::mc::random_playout;
         // This creates a MonteCarlo seach tree, grows it and then
         // selects the most robust move.
@@ -260,6 +261,6 @@ impl StatelessAI for MCTreeAI {
         let choosen_position = *thread_rng().choose(&most_robust).unwrap();
 
         // Finally, we got the best move - return it to play it.
-        Position2(choosen_position as u8).into()
+        Position2(choosen_position as u8)
     }
 }

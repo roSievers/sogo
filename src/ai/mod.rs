@@ -8,13 +8,13 @@ pub mod value;
 mod mctree;
 
 use game;
-use game::Action;
+use game::Position2;
 use std::rc::Rc;
 
 // I should first focus on stateless AIs. The current AIs are all stateless
 // and I shouldn't have to deal with the extra baggage.
 pub trait StatelessAI {
-    fn action(&self, state: &game::State) -> Action;
+    fn action(&self, state: &game::State) -> Position2;
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -57,7 +57,7 @@ impl AIBox {
 }
 
 impl StatelessAI for AIBox {
-    fn action(&self, state: &game::State) -> Action {
+    fn action(&self, state: &game::State) -> Position2 {
         match self {
             &AIBox::Random(ref ai) => ai.action(state),
             &AIBox::MC(ref ai) => ai.action(state),
@@ -114,7 +114,7 @@ pub fn run_match<T: StatelessAI, U: StatelessAI>(
 
 // To make the gameplay more interesting, the AI should chose a random best move
 // instead of a deterministic one.
-fn random_best_move<T: Iterator<Item = (Action, i32)>>(mut tuples: T) -> Action {
+fn random_best_move<T: Iterator<Item = (Position2, i32)>>(mut tuples: T) -> Position2 {
     use rand::{thread_rng, Rng};
 
     let (initial_action, initial_value) = tuples.next().unwrap();

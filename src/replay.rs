@@ -1,10 +1,11 @@
 /* This module refines a game::State object with a history.*/
 
 use game;
+use game::Position2;
 use std::rc::Rc;
 
 pub struct History {
-    actions: Vec<game::Action>,
+    actions: Vec<Position2>,
     playback_count: Option<usize>,
     pub state: game::State,
 }
@@ -17,7 +18,7 @@ impl History {
             state: game::State::new(structure),
         }
     }
-    pub fn add(&mut self, action: game::Action) {
+    pub fn add(&mut self, action: Position2) {
         self.actions.push(action);
         if self.playback_count.is_none() {
             self.state.execute(action);
@@ -89,7 +90,7 @@ impl History {
 pub struct HistoryPlayback<'a> {
     index: usize,
     max_index: usize,
-    actions: &'a Vec<game::Action>,
+    actions: &'a Vec<Position2>,
     state: game::State,
 }
 
@@ -100,7 +101,7 @@ impl<'a> Iterator for HistoryPlayback<'a> {
             None
         } else if let Some(action) = self.actions.get(self.index) {
             let color = self.state.current_color;
-            let position = self.state.insert(action.unwrap());
+            let position = self.state.insert(*action);
             self.index += 1;
             Some((position, color))
         } else {
