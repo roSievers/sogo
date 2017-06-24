@@ -21,7 +21,8 @@ extern crate clap;
 
 use ai::StatelessAI;
 use constants::LINES; //, PARALLELOGRAMS, PLUSSES};
-use std::rc::Rc;
+use constants::PARALLELOGRAMS;
+use std::sync::Arc;
 
 fn main() {
     use command_line::Arguments;
@@ -37,7 +38,7 @@ fn main() {
     };
 
     // TODO: Make this configurable.
-    let structure = Rc::new(game::Structure::new(&LINES));
+    let structure = Arc::new(game::Structure::new(&LINES));
 
     let replay = match argument {
         Arguments::VsAI { opponent } => {
@@ -77,8 +78,8 @@ fn main() {
 
 
 
-fn interactive(structure: Rc<game::Structure>, mut p2: ai::AIBox) -> replay::History {
-    let ui_connector = ui::UiConnector::new();
+fn interactive(structure: Arc<game::Structure>, mut p2: ai::AIBox) -> replay::History {
+    let ui_connector = ui::UiConnector::new(structure.clone());
 
     let mut replay = replay::History::new(structure.clone());
 
@@ -132,12 +133,12 @@ fn ai_turn<A: StatelessAI>(
 
 // This is simmilar to interactive, but the player isn't allowed to do any moves.
 fn demo(
-    structure: Rc<game::Structure>,
+    structure: Arc<game::Structure>,
     mut active_ai: ai::AIBox,
     mut waiting_ai: ai::AIBox,
 ) -> replay::History {
     use std::mem::swap;
-    let ui_connector = ui::UiConnector::new();
+    let ui_connector = ui::UiConnector::new(structure.clone());
 
     let mut replay = replay::History::new(structure.clone());
 
@@ -161,7 +162,7 @@ fn demo(
 
 /* Batch mode allows you to pitch two AIs against each other
 and get some information what happened in the game. */
-fn batch(structure: Rc<game::Structure>, count: usize, mut ai_1: ai::AIBox, mut ai_2: ai::AIBox) {
+fn batch(structure: Arc<game::Structure>, count: usize, mut ai_1: ai::AIBox, mut ai_2: ai::AIBox) {
     for i in 1..count + 1 {
         println!(
             "Match {} results in {:?}",

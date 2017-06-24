@@ -8,7 +8,7 @@ use kiss3d::scene::SceneNode;
 use kiss3d::window::Window;
 use kiss3d::camera::{ArcBall, Camera};
 
-use std::rc::Rc;
+use std::sync::Arc;
 
 use game;
 use game::Position2;
@@ -32,7 +32,7 @@ pub struct State {
 }
 
 impl State {
-    pub fn empty(structure: Rc<game::Structure>) -> Self {
+    pub fn empty(structure: Arc<game::Structure>) -> Self {
         State {
             replay: History::new(structure),
             hint: None,

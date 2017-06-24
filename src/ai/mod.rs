@@ -9,7 +9,7 @@ mod mctree;
 
 use game;
 use game::Position2;
-use std::rc::Rc;
+use std::sync::Arc;
 
 // I should first focus on stateless AIs. The current AIs are all stateless
 // and I shouldn't have to deal with the extra baggage.
@@ -36,7 +36,7 @@ pub enum AIBox {
 }
 
 impl AIBox {
-    pub fn new(structure: Rc<game::Structure>, ai_parameter: Constructor) -> AIBox {
+    pub fn new(structure: Arc<game::Structure>, ai_parameter: Constructor) -> AIBox {
         match ai_parameter {
             Constructor::Random => AIBox::Random(random::RandomSogoAI::new()),
             Constructor::MonteCarlo { endurance } => AIBox::MC(mc::MonteCarloAI::new(endurance)),
@@ -87,7 +87,7 @@ impl StatelessAI for AIBox {
 
 
 pub fn run_match<T: StatelessAI, U: StatelessAI>(
-    structure: Rc<game::Structure>,
+    structure: Arc<game::Structure>,
     white_player: &mut T,
     black_player: &mut U,
 ) -> game::State {

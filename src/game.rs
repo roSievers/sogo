@@ -1,5 +1,5 @@
 use std::ops::{AddAssign, Not};
-use std::rc::Rc;
+use std::sync::Arc;
 
 // The two dimensional position is a number between 0 and 15,
 // the three dimensional position is a number between 0 and 63.
@@ -328,11 +328,11 @@ pub struct State {
     pub victory_state: VictoryState,
     // Caches the column height (0, 1, 2, 3) to quickly determine available moves.
     pub column_height: [u8; 16],
-    pub structure: Rc<Structure>,
+    pub structure: Arc<Structure>,
 }
 
 impl State {
-    pub fn new(structure: Rc<Structure>) -> Self {
+    pub fn new(structure: Arc<Structure>) -> Self {
         State {
             points: [PointState::Empty; 64],
             current_color: Color::White,

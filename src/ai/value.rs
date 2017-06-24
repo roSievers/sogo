@@ -70,12 +70,12 @@ pub fn subsets(state: &game::State, my_color: game::Color) -> i32 {
 fn test_subsets_values() {
     use game::{Structure, State, Position2};
     use game::Color::White;
-    use std::rc::Rc;
+    use std::sync::Arc;
     use constants::LINES;
 
     let structure = Structure::new(&LINES);
 
-    let mut state = State::new(Rc::new(structure));
+    let mut state = State::new(Arc::new(structure));
     assert_eq!(0, subsets(&state, White));
 
     state.insert(Position2::new(0, 0));

@@ -2,7 +2,7 @@
 
 use game;
 use game::Position2;
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub struct History {
     actions: Vec<Position2>,
@@ -11,7 +11,7 @@ pub struct History {
 }
 
 impl History {
-    pub fn new(structure: Rc<game::Structure>) -> Self {
+    pub fn new(structure: Arc<game::Structure>) -> Self {
         History {
             actions: vec![],
             playback_count: None,

@@ -4,8 +4,7 @@ use game_view::Phase;
 use game;
 use game::Position2;
 use thread_synchronisation::{CoreEvent, UiEvent};
-use constants::LINES; //, PARALLELOGRAMS, PLUSSES};
-use std::rc::Rc;
+use std::sync::Arc;
 
 // Thread Communication
 use std::thread;
@@ -52,11 +51,13 @@ pub struct UiConnector {
 
 
 impl UiConnector {
-    pub fn new() -> Self {
+    pub fn new(structure: Arc<game::Structure>) -> Self {
         let (my_sender, thread_receiver) = channel();
         let (thread_sender, my_receiver) = channel();
 
-        thread::spawn(move || { run_ui(thread_sender, thread_receiver); });
+        thread::spawn(move || {
+            run_ui(thread_sender, thread_receiver, structure);
+        });
 
         UiConnector {
             sender: my_sender,
@@ -113,9 +114,11 @@ impl UiConnector {
 }
 
 
-pub fn run_ui(core_sender: Sender<CoreEvent>, ui_receiver: Receiver<UiEvent>) {
-    let structure = Rc::new(game::Structure::new(&LINES));
-
+pub fn run_ui(
+    core_sender: Sender<CoreEvent>,
+    ui_receiver: Receiver<UiEvent>,
+    structure: Arc<game::Structure>,
+) {
     let mut view_state = game_view::State::empty(structure.clone());
 
     let mut window = prepare_window();

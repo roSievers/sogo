@@ -3,11 +3,11 @@ use game;
 use ai;
 use ai::run_match;
 use constants::LINES;
-use std::rc::Rc;
+use std::sync::Arc;
 
 #[test]
 fn match_mc() {
-    let structure = Rc::new(game::Structure::new(&LINES));
+    let structure = Arc::new(game::Structure::new(&LINES));
     let mut white_player = ai::mc::MonteCarloAI::new(1000);
     let mut black_player = ai::mc::MonteCarloAI::new(1000);
     run_match(structure, &mut white_player, &mut black_player);
@@ -15,7 +15,7 @@ fn match_mc() {
 
 #[test]
 fn match_mc_tree() {
-    let structure = Rc::new(game::Structure::new(&LINES));
+    let structure = Arc::new(game::Structure::new(&LINES));
     let mut white_player = ai::mc::MonteCarloAI::new(1000);
     let mut black_player =
         ai::tree::TreeJudgementAI::new(structure.clone(), 2, ai::value::Simple::Subsets);
@@ -24,7 +24,7 @@ fn match_mc_tree() {
 
 #[test]
 fn match_tree() {
-    let structure = Rc::new(game::Structure::new(&LINES));
+    let structure = Arc::new(game::Structure::new(&LINES));
     let mut white_player =
         ai::tree::TreeJudgementAI::new(structure.clone(), 2, ai::value::Simple::Subsets);
     let mut black_player =
