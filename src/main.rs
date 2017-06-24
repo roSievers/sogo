@@ -20,8 +20,6 @@ extern crate rand;
 extern crate clap;
 
 use ai::StatelessAI;
-use constants::LINES; //, PARALLELOGRAMS, PLUSSES};
-use constants::PARALLELOGRAMS;
 use std::sync::Arc;
 
 fn main() {
@@ -37,32 +35,44 @@ fn main() {
         }
     };
 
-    // TODO: Make this configurable.
-    let structure = Arc::new(game::Structure::new(&LINES));
-
     let replay = match argument {
-        Arguments::VsAI { opponent } => {
+        Arguments::VsAI {
+            structure,
+            opponent,
+        } => {
+            let structure_arc: Arc<game::Structure> = Arc::new(structure.into());
             interactive(
-                structure.clone(),
-                ai::AIBox::new(structure.clone(), opponent),
+                structure_arc.clone(),
+                ai::AIBox::new(structure_arc.clone(), opponent),
             )
         }
-        Arguments::Batch { count, ai_1, ai_2 } => {
+        Arguments::Batch {
+            structure,
+            count,
+            ai_1,
+            ai_2,
+        } => {
+            let structure_arc: Arc<game::Structure> = Arc::new(structure.into());
             batch(
-                structure.clone(),
+                structure_arc.clone(),
                 count,
-                ai::AIBox::new(structure.clone(), ai_1),
-                ai::AIBox::new(structure.clone(), ai_2),
+                ai::AIBox::new(structure_arc.clone(), ai_1),
+                ai::AIBox::new(structure_arc.clone(), ai_2),
             );
             // FIXME: Store the replays. Maybe batch can return an Iterator of
             // type History? Or just do the counting in this loop.
             return;
         }
-        Arguments::Demo { ai_1, ai_2 } => {
+        Arguments::Demo {
+            structure,
+            ai_1,
+            ai_2,
+        } => {
+            let structure_arc: Arc<game::Structure> = Arc::new(structure.into());
             demo(
-                structure.clone(),
-                ai::AIBox::new(structure.clone(), ai_1),
-                ai::AIBox::new(structure.clone(), ai_2),
+                structure_arc.clone(),
+                ai::AIBox::new(structure_arc.clone(), ai_1),
+                ai::AIBox::new(structure_arc.clone(), ai_2),
             )
         }
     };

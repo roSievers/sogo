@@ -1,3 +1,37 @@
+use game;
+use std::str::FromStr;
+
+#[derive(Copy, Clone, Debug)]
+pub enum StructureSource {
+    Line,
+    Parallelogram,
+    Plus,
+}
+
+impl Into<game::Structure> for StructureSource {
+    fn into(self) -> game::Structure {
+        match self {
+            StructureSource::Line => game::Structure::new(&LINES),
+            StructureSource::Parallelogram => game::Structure::new(&PARALLELOGRAMS),
+            StructureSource::Plus => game::Structure::new(&PLUSSES),
+        }
+    }
+}
+
+impl FromStr for StructureSource {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "line" => Ok(StructureSource::Line),
+            "para" => Ok(StructureSource::Parallelogram),
+            "parallelogram" => Ok(StructureSource::Parallelogram),
+            "plus" => Ok(StructureSource::Plus),
+            _ => Err(format!("Unknown structure name: '{}'", s)),
+        }
+    }
+}
+
 // this needs to be a unsigned u64 because we are using each of the 64 bits to describe one
 // of the 64 point coordinates of the game state.
 // Here an array must be used because vectors aren't allowed to be constants.

@@ -3,15 +3,23 @@
 use clap;
 use clap::{App, Arg, SubCommand};
 
+use std::str::FromStr;
+
 use ai;
+use constants;
 
 pub enum Arguments {
-    VsAI { opponent: ai::Constructor },
+    VsAI {
+        structure: constants::StructureSource,
+        opponent: ai::Constructor,
+    },
     Demo {
+        structure: constants::StructureSource,
         ai_1: ai::Constructor,
         ai_2: ai::Constructor,
     },
     Batch {
+        structure: constants::StructureSource,
         ai_1: ai::Constructor,
         ai_2: ai::Constructor,
         count: usize,
@@ -20,6 +28,12 @@ pub enum Arguments {
 
 pub fn get_arguments() -> Result<Arguments, String> {
     let matches = setup_clap();
+
+    let structure = matches
+        .value_of("structure")
+        .unwrap()
+        .parse::<constants::StructureSource>()
+        .unwrap();
 
     if let Some(batch_matches) = matches.subcommand_matches("batch") {
         let ai_1 = batch_matches.values_of("ai1").map(ai_parser).unwrap()?;
@@ -30,12 +44,21 @@ pub fn get_arguments() -> Result<Arguments, String> {
             .parse::<usize>()
             .unwrap();
 
-        Ok(Arguments::Batch { ai_1, ai_2, count })
+        Ok(Arguments::Batch {
+            structure,
+            ai_1,
+            ai_2,
+            count,
+        })
     } else if let Some(demo_matches) = matches.subcommand_matches("demo") {
         let ai_1 = demo_matches.values_of("ai1").map(ai_parser).unwrap()?;
         let ai_2 = demo_matches.values_of("ai2").map(ai_parser).unwrap()?;
 
-        Ok(Arguments::Demo { ai_1, ai_2 })
+        Ok(Arguments::Demo {
+            structure,
+            ai_1,
+            ai_2,
+        })
     } else {
         // No subcommand is activated, this is a normal game VS the AI.
         let opponent = match matches.values_of("opponent") {
@@ -43,17 +66,21 @@ pub fn get_arguments() -> Result<Arguments, String> {
             None => Ok(ai::Constructor::MonteCarlo { endurance: 1000 }),
         }?;
 
-        Ok(Arguments::VsAI { opponent })
+        Ok(Arguments::VsAI {
+            structure,
+            opponent,
+        })
     }
 }
 
+fn validate_parse<T: FromStr>(s: String) -> Result<(), String> {
+    match s.parse::<T>() {
+        Ok(_) => Ok(()),
+        Err(_) => Err("Cannot parse this argument.".to_owned()),
+    }
+}
 
 fn setup_clap<'clap>() -> clap::ArgMatches<'clap> {
-    let validate_integer = |s: String| match s.parse::<u32>() {
-        Ok(_) => Ok(()),
-        Err(_) => Err("Needs to be an integer.".to_owned()),
-    };
-
     let ai_1 = || {
         Arg::with_name("ai1")
             .short("p")
@@ -78,7 +105,7 @@ fn setup_clap<'clap>() -> clap::ArgMatches<'clap> {
                 .help("How many matches should be played")
                 .takes_value(true)
                 .default_value("1")
-                .validator(validate_integer),
+                .validator(validate_parse::<u32>),
         )
         .arg(ai_1())
         .arg(ai_2());
@@ -98,6 +125,14 @@ fn setup_clap<'clap>() -> clap::ArgMatches<'clap> {
         .version("0.0.1")
         .author("Rolf Sievers <rolf.sievers@posteo.de>")
         .about("UI and AIs for Sogo.")
+        .arg(
+            Arg::with_name("structure")
+                .short("s")
+                .long("structure")
+                .help("Specify which rules you want to play by.")
+                .default_value("line")
+                .validator(validate_parse::<constants::StructureSource>),
+        )
         .subcommand(batch_run)
         .subcommand(demo_match)
         .arg(opponent)
