@@ -41,6 +41,36 @@ impl VecTree {
         storage.push(Node::new(Index(0), None, state));
         VecTree { storage }
     }
+    fn robust_move(&self) -> Position2 {
+        // Select the action, which was played most often. Apparently this
+        // is more robust than using the action with the best win ratio.
+        let ref root = self.storage[0];
+
+        let mut most_robust = vec![];
+        let mut most_simulations = 0;
+
+        for i in 0..16 {
+            match root.children[i] {
+                ChildRef::Expanded(child_index) => {
+                    let ref child = self.storage[child_index.0];
+                    if child.simulation_count > most_simulations {
+                        most_robust = vec![i];
+                        most_simulations = child.simulation_count;
+                    } else if child.simulation_count == most_simulations {
+                        most_robust.push(i);
+                    } else {
+                        // This child is worse than a previously seen child.
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let choosen_position = *thread_rng().choose(&most_robust).unwrap();
+
+        // Finally, we got the best move - return it to play it.
+        Position2(choosen_position as u8)
+    }
 }
 
 #[allow(dead_code)]
@@ -208,12 +238,7 @@ impl MCTreeAI {
             exploration,
         }
     }
-}
-
-
-#[allow(dead_code)]
-impl StatelessAI for MCTreeAI {
-    fn action(&self, state: &game::State) -> Position2 {
+    fn create_tree(&self, state: &game::State) -> VecTree {
         use ai::mc::random_playout;
         // This creates a MonteCarlo seach tree, grows it and then
         // selects the most robust move.
@@ -234,33 +259,77 @@ impl StatelessAI for MCTreeAI {
             tree.backpropagate(leaf_index, -score);
         }
 
-        // Now, select the action, which was played most often. Apparently this
-        // is more robust than using the action with the best win ratio.
-        let ref root = tree.storage[0];
+        tree
+    }
+    fn create_tree_async(&self, state: &game::State) -> VecTree {
+        use ai::mc::random_playout;
+        use threadpool::ThreadPool;
+        use std::sync::mpsc::channel;
 
-        let mut most_robust = vec![];
-        let mut most_simulations = 0;
+        // Set up everything async.
+        let worker_count = 4;
+        let pool = ThreadPool::new(worker_count);
+        let (sender, receiver) = channel();
 
-        for i in 0..16 {
-            match root.children[i] {
-                ChildRef::Expanded(child_index) => {
-                    let ref child = tree.storage[child_index.0];
-                    if child.simulation_count > most_simulations {
-                        most_robust = vec![i];
-                        most_simulations = child.simulation_count;
-                    } else if child.simulation_count == most_simulations {
-                        most_robust.push(i);
-                    } else {
-                        // This child is worse than a previously seen child.
-                    }
-                }
-                _ => {}
+        // Set up an empty tree.
+        let mut tree = VecTree::new(self.endurance + 1, state);
+        assert!(
+            self.endurance > worker_count,
+            "The endurance must be larger than {}.",
+            worker_count
+        );
+        let mut endurance_left = self.endurance - worker_count;
+
+        // Create the first few packages worth of work.
+        for _ in 0..worker_count {
+            // Selection & Expansion
+            let (leaf_index, leaf_state) =
+                tree.select_best(Index(0), state.clone(), self.exploration);
+
+            // Simulation
+            let sender_clone = sender.clone();
+            pool.execute(move || {
+                let score = random_playout(&leaf_state)
+                    .scoring(leaf_state.current_color)
+                    .unwrap() as isize;
+
+                sender_clone.send((leaf_index, score)).unwrap();
+            });
+        }
+
+        // Now wait for results
+        while let Ok((leaf_index, score)) = receiver.recv() {
+            // Backpropagation
+            tree.backpropagate(leaf_index, -score);
+
+            if endurance_left > 0 {
+                endurance_left -= 1;
+                // Generate new work
+                // Selection & Expansion
+                let (leaf_index, leaf_state) =
+                    tree.select_best(Index(0), state.clone(), self.exploration);
+
+                // Simulation
+                let sender_clone = sender.clone();
+                pool.execute(move || {
+                    let score = random_playout(&leaf_state)
+                        .scoring(leaf_state.current_color)
+                        .unwrap() as isize;
+
+                    sender_clone.send((leaf_index, score)).unwrap();
+                });
+            } else if pool.active_count() == 0 {
+                break;
             }
         }
 
-        let choosen_position = *thread_rng().choose(&most_robust).unwrap();
+        tree
+    }
+}
 
-        // Finally, we got the best move - return it to play it.
-        Position2(choosen_position as u8)
+
+impl StatelessAI for MCTreeAI {
+    fn action(&self, state: &game::State) -> Position2 {
+        self.create_tree_async(state).robust_move()
     }
 }

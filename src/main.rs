@@ -19,6 +19,8 @@ extern crate nalgebra as na;
 extern crate rand;
 extern crate clap;
 
+extern crate threadpool;
+
 use ai::StatelessAI;
 use std::sync::Arc;
 

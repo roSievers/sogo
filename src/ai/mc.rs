@@ -55,7 +55,8 @@ fn monte_carlo_judgement(state: &game::State, my_color: game::Color, amount: usi
     }
 }
 
-
+// FIXME: There should be a version of this that consumes the game::State instead
+// of cloning it.
 pub fn random_playout(state: &game::State) -> VictoryState {
     let mut my_state = state.clone();
     let mut rng = thread_rng();
