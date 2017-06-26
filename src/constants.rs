@@ -36,7 +36,6 @@ impl FromStr for StructureSource {
 // of the 64 point coordinates of the game state.
 // Here an array must be used because vectors aren't allowed to be constants.
 // The values were generated using a python script which should also be available in the git repo.
-#[allow(dead_code)] // Just to get rid of _large_ warnings.
 pub const PARALLELOGRAMS: [u64; 1020] = [
     4785147619639296,
     9007340990824449,
@@ -1062,7 +1061,6 @@ pub const PARALLELOGRAMS: [u64; 1020] = [
 
 // While the rust code to generate them is reasonable simple and already done it is nice to
 // load them from their number representation to test if everything still works.
-#[allow(dead_code)] // Just to get rid of _large_ warnings.
 pub const LINES: [u64; 76] = [
     286326784,
     281479271743489,
@@ -1142,7 +1140,6 @@ pub const LINES: [u64; 76] = [
     3840,
 ];
 
-#[allow(dead_code)]
 pub const PLUSSES: [u64; 240] = [
     1157426204015329280,
     4398065647617,

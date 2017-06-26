@@ -41,25 +41,18 @@ fn main() {
         Arguments::VsAI {
             structure,
             opponent,
-        } => {
-            let structure_arc: Arc<game::Structure> = Arc::new(structure.into());
-            interactive(
-                structure_arc.clone(),
-                ai::AIBox::new(structure_arc.clone(), opponent),
-            )
-        }
+        } => interactive(Arc::new(structure.into()), ai::AIBox::new(opponent)),
         Arguments::Batch {
             structure,
             count,
             ai_1,
             ai_2,
         } => {
-            let structure_arc: Arc<game::Structure> = Arc::new(structure.into());
             batch(
-                structure_arc.clone(),
+                Arc::new(structure.into()),
                 count,
-                ai::AIBox::new(structure_arc.clone(), ai_1),
-                ai::AIBox::new(structure_arc.clone(), ai_2),
+                ai::AIBox::new(ai_1),
+                ai::AIBox::new(ai_2),
             );
             // FIXME: Store the replays. Maybe batch can return an Iterator of
             // type History? Or just do the counting in this loop.
@@ -70,11 +63,10 @@ fn main() {
             ai_1,
             ai_2,
         } => {
-            let structure_arc: Arc<game::Structure> = Arc::new(structure.into());
             demo(
-                structure_arc.clone(),
-                ai::AIBox::new(structure_arc.clone(), ai_1),
-                ai::AIBox::new(structure_arc.clone(), ai_2),
+                Arc::new(structure.into()),
+                ai::AIBox::new(ai_1),
+                ai::AIBox::new(ai_2),
             )
         }
     };

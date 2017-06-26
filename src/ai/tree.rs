@@ -5,7 +5,6 @@ use ai::StatelessAI;
 
 use game;
 use game::Position2;
-use std::sync::Arc;
 
 
 pub fn recursive_judgement(
@@ -32,22 +31,14 @@ pub fn recursive_judgement(
     }
 }
 
-#[allow(dead_code)]
 pub struct TreeJudgementAI {
-    structure: Arc<game::Structure>,
     search_depth: u8,
     value_function: value::Simple,
 }
 
-#[allow(dead_code)]
 impl TreeJudgementAI {
-    pub fn new(
-        structure: Arc<game::Structure>,
-        depth: u8,
-        value_function: value::Simple,
-    ) -> TreeJudgementAI {
+    pub fn new(depth: u8, value_function: value::Simple) -> TreeJudgementAI {
         TreeJudgementAI {
-            structure: structure,
             search_depth: depth,
             value_function,
         }

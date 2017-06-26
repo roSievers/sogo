@@ -38,7 +38,7 @@ struct VecTree {
 impl VecTree {
     fn new(capacity: usize, state: &game::State) -> Self {
         let mut storage = Vec::with_capacity(capacity);
-        storage.push(Node::new(Index(0), None, state));
+        storage.push(Node::new(None, state));
         VecTree { storage }
     }
     fn robust_move(&self) -> Position2 {
@@ -73,19 +73,17 @@ impl VecTree {
     }
 }
 
-#[allow(dead_code)]
 struct Node {
     // The win_count counts wins - losses and can be negative.
     win_count: isize,
     simulation_count: usize,
 
-    index: Index,
     parent: Option<Index>,
     children: [ChildRef; 16],
 }
 
 impl Node {
-    fn new(own_index: Index, parent_index: Option<Index>, state: &game::State) -> Self {
+    fn new(parent_index: Option<Index>, state: &game::State) -> Self {
         let mut children = [ChildRef::NotYetExpanded; 16];
         for i in 0..16 {
             if state.column_height[i] == 4 {
@@ -95,7 +93,6 @@ impl Node {
         Node {
             win_count: 0,
             simulation_count: 0,
-            index: own_index,
             parent: parent_index,
             children,
         }
@@ -206,9 +203,7 @@ impl VecTree {
         };
 
         state.execute(Position2(choosen_position as u8));
-        self.storage.push(
-            Node::new(new_index, Some(node_index), &state),
-        );
+        self.storage.push(Node::new(Some(node_index), &state));
 
         (new_index, state)
     }
@@ -230,36 +225,12 @@ impl VecTree {
 }
 
 
-#[allow(dead_code)]
 impl MCTreeAI {
     pub fn new(endurance: usize, exploration: f32) -> Self {
         MCTreeAI {
             endurance,
             exploration,
         }
-    }
-    fn create_tree(&self, state: &game::State) -> VecTree {
-        use ai::mc::random_playout;
-        // This creates a MonteCarlo seach tree, grows it and then
-        // selects the most robust move.
-        let mut tree = VecTree::new(self.endurance + 1, state);
-
-        for _ in 0..self.endurance {
-            // Run the four steps of MCTS over and over again.
-            // Selection & Expansion
-            let (leaf_index, leaf_state) =
-                tree.select_best(Index(0), state.clone(), self.exploration);
-            // Simulation
-            // FIXME: I don't use the original leaf_state after this so this
-            // executes an unnecessary clone in random_playout.
-            let score = random_playout(&leaf_state)
-                .scoring(leaf_state.current_color)
-                .unwrap() as isize;
-            // Backpropagation
-            tree.backpropagate(leaf_index, -score);
-        }
-
-        tree
     }
     fn create_tree_async(&self, state: &game::State) -> VecTree {
         use ai::mc::random_playout;
@@ -289,9 +260,8 @@ impl MCTreeAI {
             // Simulation
             let sender_clone = sender.clone();
             pool.execute(move || {
-                let score = random_playout(&leaf_state)
-                    .scoring(leaf_state.current_color)
-                    .unwrap() as isize;
+                let current_color = leaf_state.current_color;
+                let score = random_playout(leaf_state).scoring(current_color).unwrap() as isize;
 
                 sender_clone.send((leaf_index, score)).unwrap();
             });
@@ -312,9 +282,8 @@ impl MCTreeAI {
                 // Simulation
                 let sender_clone = sender.clone();
                 pool.execute(move || {
-                    let score = random_playout(&leaf_state)
-                        .scoring(leaf_state.current_color)
-                        .unwrap() as isize;
+                    let current_color = leaf_state.current_color;
+                    let score = random_playout(leaf_state).scoring(current_color).unwrap() as isize;
 
                     sender_clone.send((leaf_index, score)).unwrap();
                 });

@@ -6,10 +6,8 @@ use rand::{thread_rng, Rng};
 use ai::StatelessAI;
 
 // An AI which executes random legal actions
-#[allow(dead_code)]
 pub struct RandomSogoAI {}
 
-#[allow(dead_code)]
 impl RandomSogoAI {
     pub fn new() -> RandomSogoAI {
         RandomSogoAI {}

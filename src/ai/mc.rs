@@ -11,12 +11,10 @@ use rand::{thread_rng, Rng};
 // For each possible action, a number of playouts is run.
 // This should give an approximate information
 // about the value of each action.
-#[allow(dead_code)]
 pub struct MonteCarloAI {
     endurance: usize, // How many random games am I allowed to play each turn?
 }
 
-#[allow(dead_code)]
 impl MonteCarloAI {
     pub fn new(endurance: usize) -> MonteCarloAI {
         MonteCarloAI { endurance: endurance }
@@ -55,24 +53,21 @@ fn monte_carlo_judgement(state: &game::State, my_color: game::Color, amount: usi
     }
 }
 
-// FIXME: There should be a version of this that consumes the game::State instead
-// of cloning it.
-pub fn random_playout(state: &game::State) -> VictoryState {
-    let mut my_state = state.clone();
+pub fn random_playout(mut state: game::State) -> VictoryState {
     let mut rng = thread_rng();
-    while my_state.victory_state == VictoryState::Undecided {
-        let legal_actions: Vec<Position2> = my_state.legal_actions().collect();
+    while state.victory_state == VictoryState::Undecided {
+        let legal_actions: Vec<Position2> = state.legal_actions().collect();
         let action = *rng.choose(&legal_actions).unwrap();
-        my_state.execute(action);
+        state.execute(action);
     }
-    my_state.victory_state
+    state.victory_state
 }
 
 
 pub fn random_playout_sample(state: &game::State, number: usize) -> VictoryStats {
     let mut statics = game::VictoryStats::new();
     for _ in 0..number {
-        let result = random_playout(&state);
+        let result = random_playout(state.clone());
         // TODO: Use the function provided by game::VictoryState
         match result {
             game::VictoryState::Win { winner, .. } => {

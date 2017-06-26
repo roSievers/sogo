@@ -36,18 +36,14 @@ pub enum AIBox {
 }
 
 impl AIBox {
-    pub fn new(structure: Arc<game::Structure>, ai_parameter: Constructor) -> AIBox {
+    pub fn new(ai_parameter: Constructor) -> AIBox {
         match ai_parameter {
             Constructor::Random => AIBox::Random(random::RandomSogoAI::new()),
             Constructor::MonteCarlo { endurance } => AIBox::MC(mc::MonteCarloAI::new(endurance)),
             Constructor::Tree {
                 depth,
                 value_function,
-            } => AIBox::Tree(tree::TreeJudgementAI::new(
-                structure.clone(),
-                depth,
-                value_function,
-            )),
+            } => AIBox::Tree(tree::TreeJudgementAI::new(depth, value_function)),
             Constructor::MonteCarloTree {
                 endurance,
                 exploration,
