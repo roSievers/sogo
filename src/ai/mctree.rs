@@ -17,6 +17,10 @@ use ai::StatelessAI;
 use game;
 use game::Position2;
 
+use std::sync::mpsc::{channel, Sender};
+use threadpool::ThreadPool;
+
+
 pub struct MCTreeAI {
     endurance: usize,
     exploration: f32,
@@ -233,14 +237,9 @@ impl MCTreeAI {
         }
     }
     fn create_tree_async(&self, state: &game::State) -> VecTree {
-        use ai::mc::random_playout;
-        use threadpool::ThreadPool;
-        use std::sync::mpsc::channel;
-
         // Set up everything async.
         let worker_count = 4;
         let pool = ThreadPool::new(worker_count);
-        let (sender, receiver) = channel();
 
         // Set up an empty tree.
         let mut tree = VecTree::new(self.endurance + 1, state);
@@ -251,48 +250,58 @@ impl MCTreeAI {
         );
         let mut endurance_left = self.endurance - worker_count;
 
-        // Create the first few packages worth of work.
-        for _ in 0..worker_count {
-            // Selection & Expansion
-            let (leaf_index, leaf_state) =
-                tree.select_best(Index(0), state.clone(), self.exploration);
+        let receiver = {
+            // We need to drop all senders for the receiver to close.
+            // After there is no more work to assign, the sender is dropped
+            // at the end of this scope.
+            let (sender, receiver) = channel();
 
-            // Simulation
-            let sender_clone = sender.clone();
-            pool.execute(move || {
-                let current_color = leaf_state.current_color;
-                let score = random_playout(leaf_state).scoring(current_color).unwrap() as isize;
-
-                sender_clone.send((leaf_index, score)).unwrap();
-            });
-        }
-
-        // Now wait for results
-        while let Ok((leaf_index, score)) = receiver.recv() {
-            // Backpropagation
-            tree.backpropagate(leaf_index, -score);
-
-            if endurance_left > 0 {
-                endurance_left -= 1;
-                // Generate new work
-                // Selection & Expansion
-                let (leaf_index, leaf_state) =
-                    tree.select_best(Index(0), state.clone(), self.exploration);
-
-                // Simulation
-                let sender_clone = sender.clone();
-                pool.execute(move || {
-                    let current_color = leaf_state.current_color;
-                    let score = random_playout(leaf_state).scoring(current_color).unwrap() as isize;
-
-                    sender_clone.send((leaf_index, score)).unwrap();
-                });
-            } else if pool.active_count() == 0 {
-                break;
+            // Create the first few packages worth of work.
+            for _ in 0..worker_count {
+                self.create_simulation_task(&mut tree, state, &sender, &pool);
             }
+
+            // Now wait for results, create new work to replace it.
+            while let Ok((leaf_index, score)) = receiver.recv() {
+                // Backpropagation
+                tree.backpropagate(leaf_index, -score);
+
+                if endurance_left > 0 {
+                    endurance_left -= 1;
+                    self.create_simulation_task(&mut tree, state, &sender, &pool);
+                } else {
+                    break;
+                }
+            }
+            receiver
+        };
+
+        // Wait for the very last results
+        while let Ok((leaf_index, score)) = receiver.recv() {
+            tree.backpropagate(leaf_index, -score);
         }
 
         tree
+    }
+    fn create_simulation_task(
+        &self,
+        tree: &mut VecTree,
+        state: &game::State,
+        sender: &Sender<(Index, isize)>,
+        pool: &ThreadPool,
+    ) {
+        use ai::mc::random_playout;
+        // Selection & Expansion
+        let (leaf_index, leaf_state) = tree.select_best(Index(0), state.clone(), self.exploration);
+
+        // Simulation
+        let sender_clone = sender.clone();
+        pool.execute(move || {
+            let current_color = leaf_state.current_color;
+            let score = random_playout(leaf_state).scoring(current_color).unwrap() as isize;
+
+            sender_clone.send((leaf_index, score)).unwrap();
+        });
     }
 }
 
