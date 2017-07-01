@@ -146,8 +146,13 @@ pub fn run_ui(
             match event.value {
                 WindowEvent::CursorPos(x, y) => {
                     if view_state.phase == Phase::Input && view_state.replay.is_resumed() {
-                        let placement_candidate =
+                        let mut placement_candidate =
                             game_view::placement_coordinate(&window, &camera, (x, y));
+                        if let Some(column) = placement_candidate {
+                            if view_state.replay.state.column_full(column) {
+                                placement_candidate = None;
+                            }
+                        }
                         view_state.hint = placement_candidate;
                     }
                 }

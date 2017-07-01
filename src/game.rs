@@ -396,6 +396,9 @@ impl State {
                 .map(|(i, _)| Position2(i as u8)),
         )
     }
+    pub fn column_full(&self, column: Position2) -> bool {
+        self.column_height[column.0 as usize] == 4
+    }
 }
 
 // Once [T; 64] becomes Clone, not just Copy, this can be derived.
