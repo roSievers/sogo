@@ -69,6 +69,7 @@ fn main() {
                 ai::AIBox::new(ai_2),
             )
         }
+        Arguments::Humans { structure } => humans(Arc::new(structure.into())),
     };
 
     // TODO: Store this in a file instead.
@@ -174,4 +175,24 @@ fn batch(structure: Arc<game::Structure>, count: usize, mut ai_1: ai::AIBox, mut
             ai::run_match(structure.clone(), &mut ai_1, &mut ai_2).victory_state
         );
     }
+}
+
+fn humans(structure: Arc<game::Structure>) -> replay::History {
+    let ui_connector = ui::UiConnector::new(structure.clone());
+
+    let mut replay = replay::History::new(structure.clone());
+
+    loop {
+        user_turn(&ui_connector, &mut replay);
+
+        // Check for victory.
+        if !replay.state.victory_state.active() {
+            println!("Game Over.");
+            ui_connector.game_over(replay.state.victory_state);
+            ui_connector.wait_for_halt();
+            break;
+        }
+    }
+
+    replay
 }

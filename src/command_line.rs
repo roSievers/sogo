@@ -24,6 +24,7 @@ pub enum Arguments {
         ai_2: ai::Constructor,
         count: usize,
     },
+    Humans { structure: constants::StructureSource, },
 }
 
 pub fn get_arguments() -> Result<Arguments, String> {
@@ -59,6 +60,8 @@ pub fn get_arguments() -> Result<Arguments, String> {
             ai_1,
             ai_2,
         })
+    } else if let Some(_) = matches.subcommand_matches("human") {
+        Ok(Arguments::Humans { structure })
     } else {
         // No subcommand is activated, this is a normal game VS the AI.
         let opponent = match matches.values_of("opponent") {
@@ -135,6 +138,9 @@ fn setup_clap<'clap>() -> clap::ArgMatches<'clap> {
         )
         .subcommand(batch_run)
         .subcommand(demo_match)
+        .subcommand(SubCommand::with_name("human").about(
+            "Allow two humans to play against each other.",
+        ))
         .arg(opponent)
         .arg(
             Arg::with_name("replay-file")
